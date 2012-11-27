@@ -5,7 +5,7 @@ A 2D-array wrapper with methods for import/export. PHP5.3 +
  
 This class is a one-stop-shop for transporting tabular data between formats. Planned formats include XML and MySQL. Handles unique string labels on rows and columns.
 
-Examples and phpdoc on the way.
+Examples and phpdoc can be found at http://grid.smrtr.co.uk
 
 ## Methods for CSV and JSON:
 

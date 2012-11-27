@@ -4,7 +4,6 @@
  * DataGridTest
  * These tests are reproducible and should go a long way to
  * inspire confidence in my DataGrid class.
- * Built on Zend_PhpUnit
  */
 require_once('Smrtr/DataGrid.php');
 class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
@@ -48,7 +47,8 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
         $point1 = $grid->column(0)[1];
         $point2 = $grid->row(1)[0];
         $point3 = $grid->getValue(1, 0);
-        $point4 = $grid->data[1][0];
+        $arr = $grid->getArray();
+        $point4 = $arr[1][0];
         $this->assertSame($val, $point1, $point2, $point3, $point4);
     }
     
@@ -67,15 +67,13 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
         $grid = new Smrtr_DataGrid($this->simpleData);
         $val = "foobar";
         $grid->setValue(1, 1, $val);
-        $res3 = $grid->data[1][1];
-        $grid->data[1][1] = $val;
-        $res4 = $grid->data[1][1];
+        $res3 = $grid->getValue(1, 1);
         $grid->column(1)[1] = $val;
         // pre-PHP5.4 you must do $col = $grid->column(1); $col[1] = $val;
-        $res1 = $grid->data[1][1];
+        $res1 = $grid->getArray()[1][1];
         $grid->row(1)[1] = $val;
-        $res2 = $grid->data[1][1];
-        $this->assertSame($res1, $res2, $res3, $res4);
+        $res2 = $grid->getArray()[1][1];
+        $this->assertSame($res1, $res2, $res3);
     }
     
     /**
@@ -89,7 +87,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
         $grid->setValue('row2', 'col2', $val);
         $res3 = $grid->getValue('row2', 'col2');
         
-        $grid->data['row2']['col2'] = $val;
+        $grid->setValue('row2', 'col2', $val);
         $res4 = $grid->getValue('row2', 'col2');
         
         $grid->column('col2')['row2'] = $val;
@@ -118,7 +116,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         $grid->appendRow($grid->row('row1'), 'cloned');
-        $this->assertSame($grid->getRow('row1'), $grid->getRow(1), $grid->data[1]);
+        $this->assertSame($grid->getRow('row1'), $grid->getRow(1), $grid->row(1)->data());
     }
     
     public function testPrependDuplicateColumn()
