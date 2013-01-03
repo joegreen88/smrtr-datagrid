@@ -13,7 +13,7 @@ require_once('DataGridVector.php');
  * @package SmrtrLib
  * @version 1.0
  * @todo XML and MySQL database table import/export and methods
- * @todo orderRowsBy(keyOrLabel), orderColumnsBy(keyOrLabel)
+ * @todo orderByRow(keyOrLabel), orderByColumn(keyOrLabel)
  */
 
 class Smrtr_DataGrid
@@ -477,7 +477,16 @@ class Smrtr_DataGrid
             throw new Smrtr_DataGrid_Exception("array expected");
         
         $this->appendKey('row', $label);
-        array_push($this->data, $this->_normalizeVector($row, $this->columns));
+        $rowVector = $this->_normalizeVector($row, $this->columns);
+        
+        if (count($rowVector) > $this->columns)
+        {
+            $lim = count($rowVector) - $this->columns;
+            for ($i=0; $i<$lim; $i++)
+                $this->appendColumn(array(), null);
+        }
+        
+        array_push($this->data, $rowVector);
         $this->rows++;
         return $this;
     }
@@ -730,7 +739,7 @@ class Smrtr_DataGrid
      * @uses Smrtr_DataGrid::appendKey()
      * @uses Smrtr_DataGrid::_normalizeVector()
      */
-    public function appendColumn( $column, $label=false )
+    public function appendColumn( $column, $label=null )
     {
         if ($column instanceof Smrtr_DataGridVector)
             $column = $column->data();
@@ -739,6 +748,14 @@ class Smrtr_DataGrid
         
         $this->appendKey('column', $label);
         $colVector = $this->_normalizeVector($column, $this->rows);
+        
+        if (count($colVector) > $this->rows)
+        {
+            $lim = count($colVector) - $this->rows;
+            for ($i=0; $i<$lim; $i++)
+                $this->appendRow(array(), null);
+        }
+        
         foreach ($this->data as $i => $row)
             array_push($this->data[$i], array_shift($colVector));
         $this->columns++;
@@ -1196,7 +1213,7 @@ class Smrtr_DataGrid
     /**
      * @internal
      */
-    protected function _normalizeVector( array $ntuple, $size=null )
+    protected function _normalizeVector( array $ntuple, $size=null, $rigidSize=false )
     {
         $vector = array(); $count = 0;
         foreach ($ntuple as $val)
@@ -1205,13 +1222,8 @@ class Smrtr_DataGrid
                 ? $val : null;
             $count++;
         }
-        if (is_int($size))
-        {
-            if ($size < $count)
-                throw new Exception("Size provided is smaller than vector length");
-            elseif ($size > $count)
-                $vector = array_pad($vector, $size, null);
-        }
+        if (is_int($size) && $size > $count)
+            $vector = array_pad($vector, $size, null);
         return $vector;
     }
     
