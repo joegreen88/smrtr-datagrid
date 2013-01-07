@@ -6,14 +6,13 @@ require_once('DataGridVector.php');
  * 
  * This class is a one-stop-shop for transporting tabular data between formats.
  * We currently provide methods for CSV and JSON.
- * Planned formats include XML and MySQL. 
+ * Planned formats include XML. 
  * Handles custom keys (a.k.a. labels) on rows and columns.
  * 
  * @author Joe Green
  * @package SmrtrLib
  * @version 1.0
- * @todo XML and MySQL database table import/export and methods
- * @todo orderByRow(keyOrLabel), orderByColumn(keyOrLabel)
+ * @todo XML import/export and methods
  */
 
 class Smrtr_DataGrid
@@ -131,8 +130,7 @@ class Smrtr_DataGrid
     }
     
     /**
-     * Get row labels, or optionally update row labels 
-     * starting from key 0 up to length of array or length of keys
+     * Get row labels, or optionally update row labels
      * 
      * @api
      * @param array|false $labels [optional]
@@ -148,21 +146,15 @@ class Smrtr_DataGrid
         {
             if ($this->rows == 0)
                 throw new Smrtr_DataGrid_Exception("Cannot assign labels to empty DataGrid");
-            $i = 0;
-            for ($i=0; $i<count($labels); $i++)
-            {
-                if ($i >= $this->rows)
-                    continue;
-                $this->updateKey('row', $i, $labels[$i]);
-            }
+            $rowKeys = $this->_normalizeKeys($labels, $this->rows);
+            $this->rowKeys = $rowKeys;
             return $this;
         }
         throw new Smrtr_DataGrid_Exception("\$labels Array or false|void expected");
     }
     
     /**
-     * Get column labels, or optionally update column labels 
-     * starting from key 0 up to length of array or length of keys
+     * Get column labels, or optionally update column labels
      * 
      * @api
      * @param array|false $labels [optional]
@@ -178,14 +170,8 @@ class Smrtr_DataGrid
         {
             if ($this->columns == 0)
                 throw new Smrtr_DataGrid_Exception("Cannot assign labels to empty DataGrid");
-            $j = 0;
-            foreach ($labels as $label)
-            {
-                if ($j >= $this->columns)
-                    break;
-                $this->updateKey('column', $j, $label);
-                $j++;
-            }
+            $columnKeys = $this->_normalizeKeys($labels, $this->columns);
+            $this->columnKeys = $columnKeys;
             return $this;
         }
         throw new Smrtr_DataGrid_Exception("\$labels Array or false|void expected");
@@ -455,6 +441,7 @@ class Smrtr_DataGrid
      * trimRows
      * takeRow
      * eachRow
+     * orderRows
      * ________________________________________________________________
      */
     
@@ -705,6 +692,58 @@ class Smrtr_DataGrid
             throw new Smrtr_DataGrid_Exception("\$callback provided is not callable");
         foreach (array_keys($this->rowKeys) as $key)
             $callback($key, $this->getRow($key));
+        return $this;
+    }
+    
+    /**
+     * Order rows by a particular column (ascending or descending)
+     * 
+     * @api
+     * @param int|string $byColumnKeyOrLabel
+     * @param string $order 'asc' or 'desc'. Defaults to 'asc'
+     * @return \Smrtr_DataGrid $this
+     * @throws Smrtr_DataGrid_Exception
+     * @uses Smrtr_DataGrid::getKey()
+     * @uses Smrtr_DataGrid::getLabel()
+     * @uses Smrtr_DataGrid::rowLabels()
+     */
+    public function orderRows( $byColumnKeyOrLabel, $order='asc', $stickyLabels=true )
+    {
+        switch ($order)
+        {
+            case 'asc': $sortFunction = 'ksort'; break;
+            case 'desc': $sortFunction = 'krsort'; break;
+            default: throw new Smrtr_DataGrid_Exception("\$order of 'asc' or 'desc' expected"); break;
+        }
+        $searchKey = $this->getKey('column', $byColumnKeyOrLabel);
+        $stack = array(); $keyStack = array();
+        $self = $this;
+        $this->eachRow( function($i, $row) use(&$stack, &$keyStack, $searchKey, $self)
+        {
+            $val = $row[$searchKey];
+            if (!array_key_exists($val, $stack))
+            {
+                $stack[$val] = array();
+                $keyStack[$val] = array();
+            }
+            $stack[$val][] = $row;
+            $keyStack[$val][] = $self->getLabel('row', $i);
+        });
+        $sortFunction($stack);
+        $sortFunction($keyStack);
+        $data = array();
+        $keys = array();
+        foreach ($stack as $val => $stack2)
+        {
+            foreach ($stack2 as $key => $row)
+            {
+                $keys[] = $keyStack[$val][$key];
+                $data[] = $row;
+            }
+        }
+        $this->data = $data;
+        if ($stickyLabels)
+            $this->rowLabels($keys);
         return $this;
     }
     
@@ -991,6 +1030,67 @@ class Smrtr_DataGrid
         return $this;
     }
     
+    /**
+     * Order columns by a particular row (ascending or descending)
+     * 
+     * @api
+     * @param int|string $byRowKeyOrLabel
+     * @param string $order 'asc' or 'desc'. Defaults to 'asc'
+     * @return \Smrtr_DataGrid $this
+     * @throws Smrtr_DataGrid_Exception
+     * @uses Smrtr_DataGrid::getKey()
+     * @uses Smrtr_DataGrid::getLabel()
+     * @uses Smrtr_DataGrid::columnLabels()
+     */
+    public function orderColumns( $byRowKeyOrLabel, $order='asc', $stickyLabels=true )
+    {
+        switch ($order)
+        {
+            case 'asc': $sortFunction = 'ksort'; break;
+            case 'desc': $sortFunction = 'krsort'; break;
+            default: throw new Smrtr_DataGrid_Exception("\$order of 'asc' or 'desc' expected"); break;
+        }        
+        $searchKey = $this->getKey('row', $byRowKeyOrLabel);
+        $stack = array(); $keyStack = array();
+        $self = $this;
+        $this->eachColumn( function($i, $column) use(&$stack, &$keyStack, $searchKey, $self)
+        {
+            $val = $column[$searchKey];
+            if (!array_key_exists($val, $stack))
+            {
+                $stack[$val] = array();
+                $keyStack[$val] = array();
+            }
+            $stack[$val][] = $column;
+            $keyStack[$val][] = $self->getLabel('column', $i);
+        });
+        $sortFunction($stack);
+        $sortFunction($keyStack);
+        $data = array();
+        $keys = array();
+        for ($i=0; $i<$this->rows; $i++)
+        {
+            $data[$i] = array();
+            for ($j=0; $j<$this->columns; $j++)
+                $data[$i][$j] = null;
+        }
+        $i = 0;
+        foreach ($stack as $val => $stack2)
+        {
+            foreach ($stack2 as $key => $column)
+            {
+                $keys[] = $keyStack[$val][$key];
+                foreach ($column as $j => $value)
+                    $data[$j][$i] = $value;
+                $i++;
+            }
+        }
+        $this->data = $data;
+        if ($stickyLabels)
+            $this->columnLabels($keys);
+        return $this;
+    }
+    
     
     /*
      * ================================================================
@@ -1218,7 +1318,7 @@ class Smrtr_DataGrid
         $vector = array(); $count = 0;
         foreach ($ntuple as $val)
         {
-            $vector[] = (is_scalar($val) || is_null($val))
+            $vector[] = is_scalar($val)
                 ? $val : null;
             $count++;
         }
@@ -1233,19 +1333,14 @@ class Smrtr_DataGrid
     protected function _normalizeKeys( array $keys, $size=null )
     {
         $vector = array(); $count = 0;
-        foreach ($ntuple as $val)
+        foreach ($keys as $val)
         {
-            $vector[] = (is_scalar($val) || is_null($val))
-                ? (string) $val : null;
+            $vector[] = (is_string($val) && strlen($val))
+                ? $val : null;
             $count++;
         }
-        if (is_int($size))
-        {
-            if ($size < $count)
-                throw new Exception("Size provided is smaller than vector length");
-            elseif ($size > $count)
-                $vector = array_pad($vector, $size, null);
-        }
+        if (is_int($size) && $size > $count)
+            $vector = array_pad($vector, $size, null);
         return $vector;
     }
     
