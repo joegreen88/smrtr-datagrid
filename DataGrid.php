@@ -768,6 +768,7 @@ class Smrtr_DataGrid
         if (!is_callable($filter))
             throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
         $Grid = new Smrtr_DataGrid;
+        $Grid->appendKeys('column', $this->columnKeys);
         foreach ($this->rowKeys as $key => $label)
         {
             $row = $this->getRow($key);
@@ -1144,6 +1145,7 @@ class Smrtr_DataGrid
         if (!is_callable($filter))
             throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
         $Grid = new Smrtr_DataGrid;
+        $Grid->appendKeys('row', $this->rowKeys);
         foreach ($this->columnKeys as $key => $label)
         {
             $column = $this->getColumn($key);
