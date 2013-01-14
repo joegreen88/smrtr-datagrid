@@ -678,20 +678,26 @@ class Smrtr_DataGrid
     }
     
     /**
-     * Loop through rows and execute a callback function on each row. f(key, rowdata)
+     * Loop through rows and execute a callback function on each row. f(key, row)
+     * Row provided to callback as array by default (faster), or optionally as Smrtr_DataGridVector object.
      * 
      * @api
      * @param callable $callback
+     * @param boolean $returnVectorObject 
      * @return \Smrtr_DataGrid $this
      * @throws Smrtr_DataGrid_Exception 
+     * @uses Smrtr_DataGrid::row()
      * @uses Smrtr_DataGrid::getRow()
      */
-    public function eachRow( $callback )
+    public function eachRow( $callback, $returnVectorObject=false )
     {
         if (!is_callable($callback))
             throw new Smrtr_DataGrid_Exception("\$callback provided is not callable");
         foreach (array_keys($this->rowKeys) as $key)
-            $callback($key, $this->getRow($key));
+        {
+            $row = $returnVectorObject ? $this->row($key) : $this->getRow($key);
+            $callback($key, $row);
+        }
         return $this;
     }
     
@@ -747,6 +753,31 @@ class Smrtr_DataGrid
         return $this;
     }
     
+    /**
+     * Filters rows by use of a callback function as a filter.
+     * To overwrite this object just call like so: $Grid = $Grid->filterRows();
+     * 
+     * @param callable $filter Called on each row: $filter($key, $label, $row) where $row is a natural-indexed array
+     * @return Smrtr_DataGrid new Smrtr_DataGrid
+     * @throws Smrtr_DataGrid_Exception
+     * @uses Smrtr_DataGrid::getRow()
+     * @uses Smrtr_DataGrid::appendRow()
+     */
+    public function filterRows( $filter )
+    {
+        if (!is_callable($filter))
+            throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
+        $Grid = new Smrtr_DataGrid;
+        foreach ($this->rowKeys as $key => $label)
+        {
+            $row = $this->getRow($key);
+            $result = (boolean) $filter($key, $label, $row);
+            if ($result)
+                $Grid->appendRow($row, $label);
+        }
+        return $Grid;
+    }
+    
     
     /*
      * ================================================================
@@ -764,6 +795,7 @@ class Smrtr_DataGrid
      * trimColumns
      * takeColumn
      * eachColumn
+     * orderColumns
      * ________________________________________________________________
      */
     
@@ -1014,19 +1046,25 @@ class Smrtr_DataGrid
     
     /**
      * Loop through columns and execute a callback function on each column. f(key, columndata)
+     * Column provided to callback as array by default (faster), or optionally as Smrtr_DataGridVector object.
      * 
      * @api
      * @param callable $callback
+     * @param boolean $returnVectorObject 
      * @return \Smrtr_DataGrid $this
      * @throws Smrtr_DataGrid_Exception 
+     * @uses Smrtr_DataGrid::column()
      * @uses Smrtr_DataGrid::getColumn()
      */
-    public function eachColumn( $callback )
+    public function eachColumn( $callback, $returnVectorObject=false )
     {
         if (!is_callable($callback))
             throw new Smrtr_DataGrid_Exception("\$callback provided is not callable");
         foreach (array_keys($this->columnKeys) as $key)
-            $callback($key, $this->getColumn($key));
+        {
+            $column = $returnVectorObject ? $this->column($key) : $this->getColumn($key);
+            $callback($key, $column);
+        }
         return $this;
     }
     
@@ -1089,6 +1127,31 @@ class Smrtr_DataGrid
         if ($stickyLabels)
             $this->columnLabels($keys);
         return $this;
+    }
+    
+    /**
+     * Filters columns by use of a callback function as a filter.
+     * To overwrite this object just call like so: $Grid = $Grid->filterColumns();
+     * 
+     * @param callable $filter Called on each column: $filter($key, $label, $column) where $column is a natural-indexed array
+     * @return Smrtr_DataGrid new Smrtr_DataGrid
+     * @throws Smrtr_DataGrid_Exception
+     * @uses Smrtr_DataGrid::getColumn()
+     * @uses Smrtr_DataGrid::appendColumn()
+     */
+    public function filterColumns( $filter )
+    {
+        if (!is_callable($filter))
+            throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
+        $Grid = new Smrtr_DataGrid;
+        foreach ($this->columnKeys as $key => $label)
+        {
+            $column = $this->getColumn($key);
+            $result = (boolean) $filter($key, $label, $column);
+            if ($result)
+                $Grid->appendColumn($row, $label);
+        }
+        return $Grid;
     }
     
     
