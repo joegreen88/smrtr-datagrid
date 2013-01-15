@@ -1255,9 +1255,9 @@ class Smrtr_DataGrid
         $Grid->appendKeys('column', $this->columnKeys);
         $Grid->loadArray($this->data);
         $subtractor = 0;
-        foreach ($this->getLabels('row') as $key => $label)
+        foreach ($this->getLabels('row') as $rowkey => $label)
         {
-            $key-= $subtractor;
+            $key = $rowkey - $subtractor;
             $row = $Grid->getRow($key);
             $keep = true;
             foreach ($selectors as $selector)
@@ -1272,7 +1272,7 @@ class Smrtr_DataGrid
                     foreach ($values as $value)
                     {
                         if ('/' == $field) // Key search
-                            $val1 = $key;
+                            $val1 = $rowkey;
                         elseif ('//' == $field) // Label search
                             $val1 = $label;
                         else // Field search
@@ -1325,9 +1325,9 @@ class Smrtr_DataGrid
         $Grid->appendKeys('row', $this->rowKeys);
         $Grid->loadArray($this->data);
         $subtractor = 0;
-        foreach ($this->getLabels('column') as $key => $label)
+        foreach ($this->getLabels('column') as $columnkey => $label)
         {
-            $key-= $subtractor;
+            $key = $columnkey - $subtractor;
             $column = $Grid->getColumn($key);
             $keep = true;
             foreach ($selectors as $selector)
@@ -1342,7 +1342,7 @@ class Smrtr_DataGrid
                     foreach ($values as $value)
                     {
                         if ('/' == $field) // Key search
-                            $val1 = $key;
+                            $val1 = $columnkey;
                         elseif ('//' == $field) // Label search
                             $val1 = $label;
                         else // Field search
@@ -1450,7 +1450,7 @@ class Smrtr_DataGrid
             $fields = array_merge($fields, (array)$this->extractSearchField($str));
             return count($fields) == 1 ? $fields[0] : $fields;
         }
-        elseif (preg_match('/^(!?[_|.a-zA-Z0-9]+)(.*)/', $str, $matches)) // unquoted (simple) string
+        elseif (preg_match('/^(!?[_|.a-zA-Z0-9\/]+)(.*)/', $str, $matches)) // unquoted (simple) string
         {
             $field = trim($matches[1], '|');
             $str = $matches[2];
