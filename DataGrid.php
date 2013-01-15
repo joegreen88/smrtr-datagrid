@@ -1248,7 +1248,6 @@ class Smrtr_DataGrid
         if (!strlen($selectorString))
             return $this;
         $selectors = $this->extractSearchString($selectorString);
-        echo print_r($selectors, true) . PHP_EOL;
         $selectorMaps = $this->selectors();
         $Grid = new Smrtr_DataGrid();
         $Grid->appendKeys('row', $this->rowKeys);
@@ -1318,7 +1317,6 @@ class Smrtr_DataGrid
         if (!strlen($selectorString))
             return $this;
         $selectors = $this->extractSearchString($selectorString);
-        echo print_r($selectors, true) . PHP_EOL;
         $selectorMaps = $this->selectors();
         $Grid = new Smrtr_DataGrid();
         $Grid->appendKeys('column', $this->columnKeys);
@@ -1555,6 +1553,7 @@ class Smrtr_DataGrid
      * loadArray
      * getArray
      * getAssociativeArray
+     * merge
      * transpose
      * info
      * row
@@ -1663,6 +1662,34 @@ class Smrtr_DataGrid
     }
     
     /**
+     * Merge another grid's contents into this grid.
+     * 
+     * We merge by appending rows or columns according to the orientation.
+     * Default orientation is 'row' meanign we append rows.
+     * If we find two vectors with the sme label we keep the local vector.
+     * 
+     * @param Smrtr_DataGrid $Grid Grid to merge with this
+     * @param string $orientation 'row' or 'column'
+     * @return \Smrtr_DataGrid $this
+     * @throws Smrtr_DataGrid_Exception
+     */
+    public function merge(Smrtr_DataGrid $Grid, $orientation='row')
+    {
+        if (!in_array($orientation, array('row', 'column')))
+            throw new Smrtr_DataGrid_Exception("orientation 'row' or 'column' expected");
+        foreach ($Grid->getLabels($orientation) as $key => $label)
+        {
+            if (! is_null($label) && $this->hasLabel($orientation, $label))
+                continue;
+            $this->{'append'.ucfirst($orientation)}(
+                $Grid->{'get'.ucfirst($orientation)}(),
+                $label
+            );
+        }
+        return $this;
+    }
+    
+    /**
      * Transposition the grid, turning rows into columns and vice-versa.
      * 
      * @api
@@ -1690,16 +1717,24 @@ class Smrtr_DataGrid
      * Get an array of info about this DataGrid
      * 
      * @api
+     * @param string|null $key Defaults to null. Optional key if looking for specific piece of info.
      * @return array rowCount=>string, columnCount=>string, rowKeys=>array, columnKeys=>array
      */
-    public function info()
+    public function info( $key=null )
     {
-        return array(
+        $info = array(
             'rowCount' => $this->rows,
             'columnCount' => $this->columns,
             'rowKeys' => $this->rowKeys,
             'columnKeys' => $this->columnKeys
         );
+        if (!is_null($key))
+        {
+            if (array_key_exists($key, $info))
+                return $info[$key];
+            throw new Smrtr_DataGrid_Exception("Unknown key provided to info function");
+        }
+        return $info;
     }
     
     /**
