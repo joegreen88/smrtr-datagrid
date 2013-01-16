@@ -14,8 +14,6 @@
  * @package SmrtrLib
  * @version 0.1
  * @requires PHP5.4
- * @todo label() to get/set label for this row/column (on linked datagrid)
- * @todo swap(x) proxy to DataGrid->swap(this, x) check vectors are same type!!!
  */
 
 class Smrtr_DataGridVector implements ArrayAccess
@@ -24,7 +22,9 @@ class Smrtr_DataGridVector implements ArrayAccess
     protected $type = null;
     protected $key = null;
     
-    /** Exactly one key must be provided. Rowkey takes precedence if you try to provide two keys.
+    /** 
+     * Exactly one key must be provided. Rowkey takes precedence if you try to provide two keys.
+     * 
      * @param int $DataGridID Link this object to a Smrtr_DataGrid with $DataGridID
      * @param int|false [optional] Save the position of this vector with a rowKey
      * @param int|false [optional] Save the position of this vector with a columnKey
@@ -48,6 +48,7 @@ class Smrtr_DataGridVector implements ArrayAccess
     
     /**
      * Get the linked Smrtr_DataGrid instance
+     * 
      * @return Smrtr_DataGrid 
      */
     public function grid()
@@ -57,6 +58,7 @@ class Smrtr_DataGridVector implements ArrayAccess
     
     /**
      * Get the data values corresponding to this vector out of linked Smrtr_DataGrid
+     * 
      * @param boolean $labelled [optional] if $labelled then returned array indexed by labels, if they are found
      * @return array
      */
@@ -64,10 +66,41 @@ class Smrtr_DataGridVector implements ArrayAccess
     {
         // call grid and return my data
         $type = $this->type();
-        if ('row' == $type) 
-            return $this->grid()->getRow($this->key, $labelled);
-        if ('column' == $type)
-            return $this->grid()->getColumn($this->key, $labelled);
+        return $this->grid()->{'get'.ucfirst($type)}($this->key, $labelled);
+    }
+    public function getValues($labelled=false) // ALIAS
+    { return $this->data($labelled); }
+    
+    /**
+     * Get an array of this vector's DISTINCT values
+     * 
+     * @return array
+     */
+    public function getDistinct()
+    {
+        $type = $this->type();
+        $data = $this->grid()->{'get'.ucfirst($type)}($this->key, false);
+        return array_keys(array_flip($data));
+    }
+    
+    /**
+     * Get/Set label for this row/column
+     * 
+     * @param false|string|null $label [optional] string|null to set label, false [default] to get label
+     * @return \Smrtr_DataGridVector|string|null $this or label
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function label($label=false)
+    {
+        $type = $this->type();
+        if (is_string($label) || is_null($label))
+        {
+            $this->grid()->updateKey($type, $this->key, $label);
+            return $this;
+        }
+        elseif (!$label)
+            return $this->grid()->{'get'.ucfirst($type)}($this->key, $labelled);
+        throw new Smrtr_DataGrid_Exception("");
     }
     
     /**
@@ -110,7 +143,7 @@ class Smrtr_DataGridVector implements ArrayAccess
             return $this->grid()->hasKey($type, $offset);
         elseif (is_string($offset))
             return $this->grid()->hasLabel($type, $offset);
-        throw new Smrtr_DataGrid_Exception("\$offset expected string or int");
+        throw new Smrtr_DataGrid_Exception("\vector offset expected string or int");
     }
     
     /**
@@ -123,7 +156,7 @@ class Smrtr_DataGridVector implements ArrayAccess
             return $this->grid()->getValue($this->key, $offset);
         if ('column' == $type)
             return $this->grid()->getValue($offset, $this->key);
-        throw new Smrtr_DataGrid_Exception("offset $offset not found");
+        throw new Smrtr_DataGrid_Exception("vector offset $offset not found");
     }
     
     /**

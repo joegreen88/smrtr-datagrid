@@ -117,8 +117,10 @@ class Smrtr_DataGrid
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
             throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
-        if (is_string($label) && strlen($label))
+        if (is_string($label))
         {
+            if (!strlen($label))
+                $label = null;
             if (in_array($label, $this->{$rowOrColumn.'Keys'}))
                 throw new Smrtr_DataGrid_Exception($rowOrColumn."Key '$label' already exists");
         }
@@ -598,6 +600,19 @@ class Smrtr_DataGrid
     }
     
     /**
+     * Get the DISTINCT values from a row
+     * 
+     * @api
+     * @param int|string $keyOrLabel
+     * @return array
+     * @uses Smrtr_DataGrid::getRow()
+     */
+    public function getRowDistinct( $keyOrLabel )
+    {
+        return array_keys( array_flip( $this->getRow($keyOrLabel) ) );
+    }
+    
+    /**
      * Fill a row with null values
      * 
      * @api
@@ -837,6 +852,44 @@ class Smrtr_DataGrid
         return $Grid;
     }
     
+    /**
+     * Merge another grid's rows into this grid.
+     * We merge by appending rows with null or unique labels
+     * 
+     * @param Smrtr_DataGrid $Grid Grid to merge with this
+     * @return \Smrtr_DataGrid $this
+     */
+    public function mergeRows(Smrtr_DataGrid $Grid)
+    {
+        $columnLabelsDone = false;
+        foreach ($Grid->getLabels('row') as $key => $label)
+        {
+            if (! is_null($label) && $this->hasLabel('row', $label))
+                continue;
+            if (!$columnLabelsDone)
+            {
+                $GridColumnCount = $Grid->info('columnCount');
+                $thisColumnCount = $this->columns;
+            }
+            $this->appendRow($Grid->getRow($key), $label);
+            if (!$columnLabelsDone)
+            {
+                if ($GridColumnCount > $thisColumnCount)
+                {
+                    $diff = $GridColumnCount - $thisColumnCount;
+                    for ($i=$diff; $i>0; $i--)
+                    {
+                        $columnKey = $GridColumnCount-$i;
+                        $columnLabel = $Grid->getLabel('column', $columnKey);
+                        $this->updateKey('column', $columnKey, $columnLabel);
+                    }
+                }
+                $columnLabelsDone = true;
+            }
+        }
+        return $this;
+    }
+    
     
     /*
      * ================================================================
@@ -855,6 +908,7 @@ class Smrtr_DataGrid
      * takeColumn
      * eachColumn
      * orderColumns
+     * mergeColumns
      * ________________________________________________________________
      */
     
@@ -958,6 +1012,19 @@ class Smrtr_DataGrid
         foreach ($this->data as $i => $row)
             $column[$i] = $row[$key];
         return $column;
+    }
+    
+    /**
+     * Get the DISTINCT values from a column
+     * 
+     * @api
+     * @param int|string $keyOrLabel
+     * @return array
+     * @uses Smrtr_DataGrid::getColumn()
+     */
+    public function getColumnDistinct( $keyOrLabel )
+    {
+        return array_keys( array_flip( $this->getColumn($keyOrLabel) ) );
     }
     
     /**
@@ -1212,6 +1279,43 @@ class Smrtr_DataGrid
                 $Grid->appendColumn($row, $label);
         }
         return $Grid;
+    }
+    
+    /**
+     * Merge another grid's columns into this grid.
+     * We merge by appending columns with null or unique labels
+     * 
+     * @param Smrtr_DataGrid $Grid Grid to merge with this
+     * @return \Smrtr_DataGrid $this
+     */
+    public function mergeColumns(Smrtr_DataGrid $Grid)
+    {
+        foreach ($Grid->getLabels('column') as $key => $label)
+        {
+            if (! is_null($label) && $this->hasLabel('column', $label))
+                continue;
+            if (!$rowLabelsDone)
+            {
+                $GridRowCount = $Grid->info('rowCount');
+                $thisRowCount = $this->rows;
+            }
+            $this->appendColumn($Grid->getColumn($key), $label);
+            if (!$rowLabelsDone)
+            {
+                if ($GridRowCount > $thisRowCount)
+                {
+                    $diff = $GridRowCount - $thisRowCount;
+                    for ($i=$diff; $i>0; $i--)
+                    {
+                        $rowKey = $GridRowCount-$i;
+                        $rowLabel = $Grid->getLabel('row', $rowKey);
+                        $this->updateKey('row', $rowKey, $rowLabel);
+                    }
+                }
+                $rowLabelsDone = true;
+            }
+        }
+        return $this;
     }
     
     
@@ -1553,7 +1657,6 @@ class Smrtr_DataGrid
      * loadArray
      * getArray
      * getAssociativeArray
-     * merge
      * transpose
      * info
      * row
@@ -1659,34 +1762,6 @@ class Smrtr_DataGrid
             $out[$rowKey] = array_combine($colKeys, $this->data[$i]);
         }
         return $out;
-    }
-    
-    /**
-     * Merge another grid's contents into this grid.
-     * 
-     * We merge by appending rows or columns according to the orientation.
-     * Default orientation is 'row' meanign we append rows.
-     * If we find two vectors with the sme label we keep the local vector.
-     * 
-     * @param Smrtr_DataGrid $Grid Grid to merge with this
-     * @param string $orientation 'row' or 'column'
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     */
-    public function merge(Smrtr_DataGrid $Grid, $orientation='row')
-    {
-        if (!in_array($orientation, array('row', 'column')))
-            throw new Smrtr_DataGrid_Exception("orientation 'row' or 'column' expected");
-        foreach ($Grid->getLabels($orientation) as $key => $label)
-        {
-            if (! is_null($label) && $this->hasLabel($orientation, $label))
-                continue;
-            $this->{'append'.ucfirst($orientation)}(
-                $Grid->{'get'.ucfirst($orientation)}(),
-                $label
-            );
-        }
-        return $this;
     }
     
     /**
@@ -2170,7 +2245,7 @@ class Smrtr_DataGrid
                 array_unshift($out[$i], (
                     is_string($this->rowKeys[$i])
                     ? $this->rowKeys[$i]
-                    : $i
+                    : ''
                 ));
         if ($includeColumnKeys && !is_null($this->columnKeys))
         {
@@ -2178,7 +2253,7 @@ class Smrtr_DataGrid
             for ($j=0; $j<$this->columns; $j++)
                 $colKeys[] = is_string($this->columnKeys[$j])
                     ? $this->columnKeys[$j]
-                    : $j;
+                    : '';
             array_unshift($out, (($includeRowKeys)
                 ? array_merge(array(""), $colKeys)
                 : $colKeys));
