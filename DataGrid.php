@@ -6,7 +6,6 @@ require_once('DataGridVector.php');
  * 
  * This class is a one-stop-shop for transporting tabular data between formats.
  * We currently provide methods for CSV and JSON.
- * Planned formats include XML. 
  * Handles custom keys (a.k.a. labels) on rows and columns.
  * 
  * @author Joe Green
@@ -126,7 +125,6 @@ class Smrtr_DataGrid
         }
         elseif (!is_null($label))
             throw new Smrtr_DataGrid_Exception("non-empty string \$label or null expected");
-        
         array_push($this->{$rowOrColumn.'Keys'}, $label);
         return $this;
     }
@@ -174,7 +172,6 @@ class Smrtr_DataGrid
      * @param array|false $labels [optional]
      * @return \Smrtr_DataGrid $this
      * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::updateKey() if updating row labels
      */
     public function rowLabels( $labels=false )
     {
@@ -198,7 +195,6 @@ class Smrtr_DataGrid
      * @param array|false $labels [optional]
      * @return \Smrtr_DataGrid $this
      * @throws Smrtr_DataGrid_Exception 
-     * @uses Smrtr_DataGrid::updateKey() if updating column labels
      */
     public function columnLabels( $labels=false )
     {
@@ -229,25 +225,19 @@ class Smrtr_DataGrid
         }
         elseif (!is_null($label))
             throw new Smrtr_DataGrid_Exception("non-empty string \$label or null expected");
-        
         array_unshift($this->{$rowOrColumn.'Keys'}, $label);
-        $this->{$rowOrColumn.'s'}++;
         return $this;
     }
     
     /**
      * @internal
      */
-    public function deleteKey( $rowOrColumn, $keyOrLabel )
+    public function deleteLastKey( $rowOrColumn )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
             throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
-        $key = $this->getKey($rowOrColumn, $keyOrLabel);
+        $key = $this->{$rowOrColumn.'s'} - 1;
         unset($this->{$rowOrColumn.'Keys'}[$key]);
-        if ($key != $this->{$rowOrColumn.'s'}-1)
-            $this->{$rowOrColumn.'Keys'} = $this->_normalizeKeys(
-                $this->{$rowOrColumn.'Keys'}, $this->{$rowOrColumn.'s'}-1
-            );
         return $this;
     }
     
@@ -525,14 +515,12 @@ class Smrtr_DataGrid
         
         $this->appendKey('row', $label);
         $rowVector = $this->_normalizeVector($row, $this->columns);
-        
         if (count($rowVector) > $this->columns)
         {
             $lim = count($rowVector) - $this->columns;
             for ($i=0; $i<$lim; $i++)
                 $this->appendColumn(array(), null);
         }
-        
         array_push($this->data, $rowVector);
         $this->rows++;
         return $this;
@@ -578,7 +566,6 @@ class Smrtr_DataGrid
             $row = $row->data();
         if (!is_array($row))
             throw new Smrtr_DataGrid_Exception("array expected");
-        
         $this->prependKey('row', $label);
         array_unshift($this->data, $this->_normalizeVector($row, $this->columns));
         $this->rows++;
@@ -635,13 +622,13 @@ class Smrtr_DataGrid
      * @param int|string $keyOrLabel
      * @return \Smrtr_DataGrid $this
      * @uses Smrtr_DataGrid::moveRow()
-     * @uses Smrtr_DataGrid::deleteKey()
+     * @uses Smrtr_DataGrid::deleteLastKey()
      */
     public function deleteRow( $keyOrLabel )
     {
         $lastRowKey = $this->rows - 1;
         $this->moveRow($keyOrLabel, $lastRowKey, true);
-        $this->deleteKey('row', $lastRowKey);
+        $this->deleteLastKey('row');
         unset($this->data[$lastRowKey]);
         $this->rows = $lastRowKey;
         return $this;
@@ -929,17 +916,14 @@ class Smrtr_DataGrid
             $column = $column->data();
         if (!is_array($column))
             throw new Smrtr_DataGrid_Exception("array expected");
-        
         $this->appendKey('column', $label);
         $colVector = $this->_normalizeVector($column, $this->rows);
-        
         if (count($colVector) > $this->rows)
         {
             $lim = count($colVector) - $this->rows;
             for ($i=0; $i<$lim; $i++)
                 $this->appendRow(array(), null);
         }
-        
         foreach ($this->data as $i => $row)
             array_push($this->data[$i], array_shift($colVector));
         $this->columns++;
@@ -963,7 +947,6 @@ class Smrtr_DataGrid
             $column = $column->data();
         if (!is_array($column))
             throw new Smrtr_DataGrid_Exception("array expected");
-        
         $key = $this->getKey('column', $keyOrLabel);
         $colVector = $this->_normalizeVector($column, $this->rows);
         foreach ($this->data as $i => $row)
@@ -988,7 +971,6 @@ class Smrtr_DataGrid
             $column = $column->data();
         if (!is_array($column))
             throw new Smrtr_DataGrid_Exception("array expected");
-        
         $this->prependKey('column', $label);
         $colVector = $this->_normalizeVector($column, $this->rows);
         foreach ($this->data as $i => $row)
@@ -1051,13 +1033,13 @@ class Smrtr_DataGrid
      * @param int|string $keyOrLabel
      * @return \Smrtr_DataGrid $this
      * @uses Smrtr_DataGrid::moveColumn()
-     * @uses Smrtr_DataGrid::deleteKey()
+     * @uses Smrtr_DataGrid::deleteLastKey()
      */
     public function deleteColumn( $keyOrLabel )
     {
         $lastColKey = $this->columns - 1;
         $this->moveColumn($keyOrLabel, $lastColKey, true);
-        $this->deleteKey('column', $lastColKey);
+        $this->deleteLastKey('column');
         foreach ($this->data as $i => $row)
             unset($this->data[$i][$lastColKey]);
         $this->columns = $lastColKey;
@@ -1270,7 +1252,7 @@ class Smrtr_DataGrid
         if (!is_callable($filter))
             throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
         $Grid = new Smrtr_DataGrid;
-        $Grid->appendKeys('row', $this->rowKeys);
+        $Grid->appendKeys('row', $this->rowKeys, false);
         foreach ($this->columnKeys as $key => $label)
         {
             $column = $this->getColumn($key);
@@ -1479,10 +1461,10 @@ class Smrtr_DataGrid
     {
         if (is_null($this->selectors))
             $this->selectors = array(
-                '=' => function($val1, $val2) { return ($val1 == $val2); },
+                '='  => function($val1, $val2) { return ($val1 == $val2); },
                 '!=' => function($val1, $val2) { return ($val1 != $val2); },
-                '>' => function($val1, $val2) { return ($val1 > $val2); },
-                '<' => function($val1, $val2) { return ($val1 < $val2); },
+                '>'  => function($val1, $val2) { return ($val1 >  $val2); },
+                '<'  => function($val1, $val2) { return ($val1 <  $val2); },
                 '>=' => function($val1, $val2) { return ($val1 >= $val2); },
                 '<=' => function($val1, $val2) { return ($val1 <= $val2); },
                 '*=' => function($val1, $val2) {
