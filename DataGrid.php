@@ -56,13 +56,13 @@ class Smrtr_DataGrid
      * A map of operators to matching-functions
      * @var array
      */
-    protected $selectors;
+    private static $selectors;
     
     /**
-     * An array cache of operator characters
+     * An array cache of selector-operator characters
      * @var array
      */
-    protected $operatorChars;
+    private static $selectorChars;
     
     /**
      * Maximum number of selectors in any given selector string 
@@ -88,6 +88,521 @@ class Smrtr_DataGrid
      */
     const maxValueLength = 1000;
     
+    /**
+     * Constant for left associativity of operators
+     * @int 
+     */
+    const leftAssociative = 0;
+    
+    /**
+     * Constant for right associativity of operators
+     * @int 
+     */
+    const rightAssociative = 1;
+    
+    /**
+     * Supported operators ["operator" => [precendence, associativity]]
+     * @array
+     */
+    private static $setOperators = array(
+        "+" => array(   10,     self::leftAssociative    ),     // intersection
+        "-" => array(   10,     self::leftAssociative    ),     // difference
+        "," => array(   0,      self::leftAssociative    )      // union
+    );
+    
+    /**
+     * @internal
+     */
+    private static function isSetOperator($token)
+    {
+        return array_key_exists($token, self::$setOperators);
+    }
+    
+    /**
+     * @internal
+     */
+    private static function isAssociative($token, $type)
+    {
+        if (!self::isSetOperator($token)) throw new Smrtr_DataGrid_Exception("Invalid token: $token");
+        if ($type === self::$setOperators[$token][1]) return true;
+        return false;
+    }
+    
+    /**
+     * @internal
+     */
+    private static function compareSetOperatorPrecedence($tokenA, $tokenB)
+    {
+        if (!self::isSetOperator($tokenA) || !self::isSetOperator($tokenB))
+            throw new Smrtr_DataGrid_Exception("Invalid tokens: $tokenA & $tokenB");
+        return (self::$setOperators[$tokenA][0] - self::$setOperators[$tokenB][0]);
+    }
+    
+    /**
+     * @internal
+     */
+    private static function selectors()
+    {
+        if (is_null(self::$selectors))
+            self::$selectors = array(
+                '='  => function($val1, $val2) { return ($val1 == $val2); },
+                '!=' => function($val1, $val2) { return ($val1 != $val2); },
+                '>'  => function($val1, $val2) {
+                    $val1 = (int) str_replace(array(' ', ',', '.'), '', $val1);
+                    $val2 = (int) str_replace(array(' ', ',', '.'), '', $val2);
+                    return ($val1 > $val2); 
+                },
+                '<'  => function($val1, $val2) {
+                    $val1 = (int) str_replace(array(' ', ',', '.'), '', $val1);
+                    $val2 = (int) str_replace(array(' ', ',', '.'), '', $val2);
+                    return ($val1 < $val2); 
+                },
+                '>=' => function($val1, $val2) {
+                    $val1 = (int) str_replace(array(' ', ',', '.'), '', $val1);
+                    $val2 = (int) str_replace(array(' ', ',', '.'), '', $val2);
+                    return ($val1 >= $val2); 
+                },
+                '<=' => function($val1, $val2) {
+                    $val1 = (int) str_replace(array(' ', ',', '.'), '', $val1);
+                    $val2 = (int) str_replace(array(' ', ',', '.'), '', $val2);
+                    return ($val1 <= $val2); 
+                },
+                '*=' => function($val1, $val2) {
+                    return (stripos($val1, $val2) !== false);
+                },
+                '^=' => function($val1, $val2) {
+                    return (stripos(trim($val1), $val2) === 0);
+                },
+                '$=' => function($val1, $val2) {
+                    $val2 = trim($val2);
+                    $val1 = substr($val1, -1 * strlen($val2));
+                    return (strcasecmp($val1, $val2) == 0);
+                }
+            );
+        return self::$selectors;
+    }
+    
+    /**
+     * @internal
+     */
+    private function selectorChars()
+    {
+        if (is_null(self::$selectorChars))
+        {
+            self::$selectorChars = array();
+            $operators = array_keys(self::selectors());
+            foreach ($operators as $operator)
+            {
+                for ($n=0; $n < strlen($operator); $n++)
+                    if (! in_array($operator[$n], self::$selectorChars))
+                        self::$selectorChars[] = $operator[$n];
+            }
+        }
+        return self::$selectorChars;
+    }
+    
+    /**
+     * @internal
+     */
+    private static function infixToRPN( array $tokens )
+    {
+        $out = array();
+        $stack = array();
+        foreach ($tokens as $token)
+        {
+            if (self::isSetOperator($token))
+            {
+                while (count($stack) && self::isSetOperator($stack[0]))
+                {
+                    if (
+                        (
+                            self::isAssociative($token, self::leftAssociative)
+                            && self::compareSetOperatorPrecedence($token, $stack[0]) <= 0
+                        )
+                        || (
+                            self::isAssociative($token, self::rightAssociative)
+                            && self::compareSetOperatorPrecedence($token, $stack[0]) < 0
+                        )
+                    ) {
+                        array_push($out, array_shift($stack));
+                        continue;
+                    }
+                    break;
+                }
+                array_unshift($stack, $token);
+            }
+            elseif ('(' == $token)
+                array_unshift($stack, $token);
+            elseif (')' == $token)
+            {
+                while (count($stack) && $stack[0] != '(')
+                    array_push($out, array_shift($stack));
+                array_shift($stack);
+            }
+            else
+                array_push($out, $token);
+        }
+        while (count($stack))
+            array_push($out, array_shift($stack));
+        return $out;
+    }
+    
+    /**
+     * @internal
+     */
+    private static function extractSearchTokens( $str )
+    {
+        $out = array(); $curDepth = 0;
+        $substr = ''; $resetSubstr = false;
+        $char = ''; $openingQuote = '';
+        $str = trim($str);
+        for ($i=0; $i<strlen($str); $i++)
+        {
+            $char = $str[$i];
+            if ($char == '"' || $char == "'")
+            {
+                if ($i == 0 || $str[$i-1] != '\\')
+                {
+                    if ($openingQuote && $char == $openingQuote)
+                    {
+                        $openingQuote = '';
+                    }
+                    else
+                    {
+                        $openingQuote = $char;
+                    }
+                }
+            }
+            elseif (!$openingQuote)
+            {
+                if ($char == '(')
+                {
+                    $substr = trim($substr);
+                    if (strlen($substr))
+                        array_push($out, $substr);
+                    array_push($out, '(');
+                    $resetSubstr = true;
+                    $curDepth++;
+                }
+                elseif ($char == ')')
+                {
+                    $curDepth--;
+                    if ($curDepth < 0)
+                        throw new Smrtr_DataGrid_Exception("Unmatched closing bracket detected");
+                    $substr = trim($substr);
+                    if (strlen($substr))
+                        array_push($out, $substr);
+                    array_push($out, ')');
+                    $resetSubstr = true;
+                }
+                elseif (array_key_exists($char, self::$setOperators))
+                {
+                    $substr = trim($substr);
+                    if (strlen($substr))
+                        array_push($out, $substr);
+                    array_push($out, $char);
+                    $resetSubstr = true;
+                }
+            }
+            $substr = $resetSubstr ? '' : $substr.$char;
+            $resetSubstr = false;
+        }
+        if ($curDepth > 0)
+            throw new Smrtr_DataGrid_Exception("Unmatched opening bracket detected");
+        $substr = trim($substr);
+        if (strlen($substr))
+            array_push($out, $substr);
+        return $out;
+    }
+    
+    /**
+     * @internal
+     */
+    private function extractSearchExpression( $str )
+    {
+        $fields = (array) $this->extractSearchField($str);
+        $operation = $this->extractSearchOperation($str, self::selectorChars());
+        $values = (array) $this->extractSearchValue($str);
+        $expression = array($fields, $operation, $values);
+        return $expression;
+    }
+    
+    /**
+     * @internal
+     */
+    private function extractSearchField( &$str )
+    {
+        $field ='';
+        if (preg_match('/^"(.*?[^\\\])"(.*)/', $str, $matches)) // quoted (complex) string
+        {
+            $fields = array();
+            $fields[] = $matches[1];
+            $str = $matches[2];
+            $fields = array_merge($fields, (array)$this->extractSearchField($str));
+            return count($fields) == 1 ? $fields[0] : $fields;
+        }
+        elseif (preg_match('/^(!?[_|.a-zA-Z0-9\/]+)(.*)/', $str, $matches)) // unquoted (simple) string
+        {
+            $field = trim($matches[1], '|');
+            $str = $matches[2];
+            if (strpos($field, '|'))
+                $field = explode('|', $field);
+            return $field;
+        }
+    }
+    
+    /**
+     * @internal
+     */
+    private function extractSearchOperation( &$str, array $operators)
+    {
+        $n = 0;
+        $operator = '';
+        while(isset($str[$n]) && in_array($str[$n], $operators) && $n < self::maxOperatorLength)
+        {
+            $operator.= $str[$n];
+            $n++;
+        }
+        if ($operator)
+            $str = substr($str, $n);
+        return $operator;
+    }
+    
+    /**
+     * @internal
+     */
+    private function extractSearchValue(&$str)
+    {
+        $str = trim($str);
+        if (! strlen($str)) 
+            return '';
+        if ($str[0] == '"' || $str[0] == "'")
+        {
+            $openingQuote = $str[0];
+            $n = 1;
+        }
+        else
+        {
+            $openingQuote = '';
+            $n = 0;
+        }
+        $value = '';
+        $lastChar = '';
+        do {
+            if (! isset($str[$n])) break;
+            $c = $str[$n];
+            if ($openingQuote)
+            {   // we are in a quoted value string
+                if ($c == $openingQuote)
+                {
+                    if ($lastChar != '\\')
+                    {   // same quote as opening quote, and not escaped = closing quote
+                        $n++;
+                        break;
+                    }
+                    else
+                    {   // intentionally escaped quote (remove the escape char)
+                        $value = rtrim($value, '\\');
+                    }
+                }
+            }
+            else
+            {   // we are in an unquoted value string
+                if ($c == '|')
+                {
+                    if ($lastChar != '\\') // non-quoted, non-escaped pipe terminates the value
+                        break;
+                    else // intentionally escaped pipe (remove the escape char)
+                        $value = rtrim($value, '\\');
+                }
+            }
+            $value.= $c;
+            $lastChar = $c;
+        } while(++$n < self::maxValueLength);
+        if (strlen("$value"))
+            $str = substr($str, $n);
+        if (strlen($str) > 1 && substr($str, 0, 1) == '|')
+        {
+            $str = substr($str, 1);
+            // recursive extraction to get all OR values
+            $v = $this->extractSearchValue($str);
+            $value = array($value);
+            if (is_array($v))
+                $value = array_merge($value, $v);
+            else
+                $value[] = $v;
+        }
+        return $value;
+    }
+    
+    /**
+     * @internal
+     */
+    private function evaluateSearchOperand( $s, $rowOrColumn )
+    {
+        if ($s instanceof Smrtr_DataGrid)
+            return $s;
+        if (!in_array($rowOrColumn, array('row','column')))
+            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
+        $rowOrColumnInverse = ($rowOrColumn == 'row') ? 'column' : 'row';
+        if (!is_string($s) || !strlen($s))
+            throw new Smrtr_DataGrid_Exception("Non-empty string expected");
+        $selector = $this->extractSearchExpression($s);
+        $selectorMaps = self::selectors();
+        $Grid = new Smrtr_DataGrid();
+        $Grid->appendKeys('row', $this->rowKeys);
+        $Grid->appendKeys('column', $this->columnKeys);
+        $Grid->loadArray($this->data);
+        $subtractor = 0;
+        foreach ($this->getLabels($rowOrColumn) as $Key => $label)
+        {
+            $key = $Key - $subtractor;
+            $v = $Grid->{'get'.ucfirst($rowOrColumn)}($key);
+            list($fields, $operator, $values) = $selector;
+            if (empty($operator) || !array_key_exists($operator, $selectorMaps))
+                throw new Smrtr_DataGrid_Exception("Invalid selector provided");
+            $matchingFunction = $selectorMaps[$operator];
+            $match = false;
+            foreach ($fields as $field)
+            {
+                foreach ($values as $value)
+                {
+                    if ('/' == $field) // Key search
+                        $val1 = $Key;
+                    elseif ('//' == $field) // Label search
+                        $val1 = $label;
+                    else // Field search
+                        $val1 = $v[$Grid->getKey($rowOrColumnInverse, $field)];
+                    if ($matchingFunction($val1, $value))
+                    {
+                        $match = true;
+                        break 2;
+                    }
+                }
+            }
+            if (!$match)
+            {
+                $Grid->deleteRow($key);
+                $subtractor++;
+            }
+        }
+        return $Grid;
+    }
+    
+    /**
+     * @internal
+     */
+    private function evaluateSearchAND( $topStack, $tmp, $rowOrColumn )
+    {
+        if (!in_array($rowOrColumn, array('row','column')))
+            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
+        $Grid = $this->evaluateSearchOperand($topStack, $rowOrColumn);
+        $Grid2 = $this->evaluateSearchOperand($tmp, $rowOrColumn);
+        return $Grid->{'intersect'.ucfirst($rowOrColumn).'s'}($Grid2);
+    }
+    
+    /**
+     * @internal
+     */
+    private function evaluateSearchDIFF( $topStack, $tmp, $rowOrColumn )
+    {
+        if (!in_array($rowOrColumn, array('row','column')))
+            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
+        $Grid = $this->evaluateSearchOperand($topStack, $rowOrColumn);
+        $Grid2 = $this->evaluateSearchOperand($tmp, $rowOrColumn);
+        return $Grid->{'diff'.ucfirst($rowOrColumn).'s'}($Grid2);
+    }
+    
+    /**
+     * @internal
+     */
+    private function evaluateSearchOR( $topStack, $tmp, $rowOrColumn )
+    {
+        if (!in_array($rowOrColumn, array('row','column')))
+            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
+        $Grid = $this->evaluateSearchOperand($topStack, $rowOrColumn);
+        $Grid2 = $this->evaluateSearchOperand($tmp, $rowOrColumn);
+        return $Grid->{'merge'.ucfirst($rowOrColumn).'s'}($Grid2);
+    }
+    
+    /**
+     * @internal
+     */
+    private function evaluateSearch( array $tokens, $rowOrColumn )
+    {
+        if (!in_array($rowOrColumn, array('row','column')))
+            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
+        $stack = array();
+        if (count($tokens) > 1)
+        {
+            foreach ($tokens as $token)
+            {
+                if (!self::isSetOperator($token))
+                {
+                    array_unshift($stack, $token);
+                }
+                else
+                {
+                    switch($token)
+                    {
+                        case '+':
+                            $method = 'evaluateSearchAND';  break;
+                        case '-':
+                            $method = 'evaluateSearchDIFF';  break;
+                        case ',':
+                            $method = 'evaluateSearchOR';  break;
+                        default:
+                            throw new Smrtr_DataGrid_Exception("Unknown set operator ".$token);
+                            break;
+                    }
+                    $tmp = array_shift($stack);
+                    array_unshift( $stack, $this->$method( array_shift($stack), $tmp, $rowOrColumn ) );
+                }
+            }
+            return array_shift($stack);
+        }
+        elseif (count($tokens) == 1)
+        {
+            return $this->evaluateSearchOperand(array_shift($tokens), $rowOrColumn);
+        }
+    }
+    
+    /**
+     * Perform a search query on the grid's rows.
+     * Returns results as a new Smrtr_DataGrid without modifying $this.
+     * 
+     * @param string $s query string
+     * @return \Smrtr_DataGrid
+     * @throws Smrtr_DataGrid_Exception
+     */
+    public function searchRows( $s )
+    {
+        if (!is_string($s))
+            throw new Smrtr_DataGrid_Exception("String expected");
+        if (!strlen($s))
+            return $this;
+        $tokens = self::infixToRPN(self::extractSearchTokens($s));
+        return $this->evaluateSearch($tokens, 'row');
+    }
+    
+    /**
+     * Perform a search query on the grid's columns.
+     * Returns results as a new Smrtr_DataGrid without modifying $this.
+     * 
+     * @param string $s query string
+     * @return \Smrtr_DataGrid
+     * @throws Smrtr_DataGrid_Exception
+     */
+    public function searchColumns( $s )
+    {
+        if (!is_string($s))
+            throw new Smrtr_DataGrid_Exception("String expected");
+        if (!strlen($s))
+            return $this;
+        $tokens = self::infixToRPN(self::extractSearchTokens($s));
+        return $this->evaluateSearch($tokens, 'column');
+    }
+        
     
     /*
      * ================================================================
@@ -492,6 +1007,10 @@ class Smrtr_DataGrid
      * takeRow
      * eachRow
      * orderRows
+     * filterRows
+     * mergeRows
+     * diffRows
+     * intersectRows
      * ________________________________________________________________
      */
     
@@ -877,6 +1396,42 @@ class Smrtr_DataGrid
         return $this;
     }
     
+    /**
+     * Remove another grid's rows from this grid.
+     * We remove rows with matching labels
+     * 
+     * @param Smrtr_DataGrid $Grid Grid to reference against
+     * @return \Smrtr_DataGrid $this
+     */
+    public function diffRows(Smrtr_DataGrid $Grid)
+    {
+        $subtractor = 0;
+        foreach ($this->getLabels('row') as $key => $label)
+        {
+            if ($Grid->hasLabel('row', $label))
+                $this->deleteRow($key-$subtractor++);
+        }
+        return $this;
+    }
+    
+    /**
+     * Intersection of this grid's rows with the rows of another grid
+     * We intersect by removing rows with labels unique to this grid
+     * 
+     * @param Smrtr_DataGrid $Grid Grid to reference against
+     * @return \Smrtr_DataGrid $this
+     */
+    public function intersectRows(Smrtr_DataGrid $Grid)
+    {
+        $subtractor = 0;
+        foreach ($this->getLabels('row') as $key => $label)
+        {
+            if (is_null($label) || !$Grid->hasLabel('row', $label))
+                $this->deleteRow($key-$subtractor++);
+        }
+        return $this;
+    }
+    
     
     /*
      * ================================================================
@@ -895,7 +1450,10 @@ class Smrtr_DataGrid
      * takeColumn
      * eachColumn
      * orderColumns
+     * filterColumns
      * mergeColumns
+     * diffColumns
+     * intersectColumns
      * ________________________________________________________________
      */
     
@@ -1300,333 +1858,39 @@ class Smrtr_DataGrid
         return $this;
     }
     
-    
-    /*
-     * ================================================================
-     * Search Functionality
-     * ================================================================
-     * selectors
-     * operators
-     * extractSearchString
-     * extractSearchField
-     * extractSearchOperator
-     * extractSearchValue
-     * findRows
-     * findColumns
-     * ________________________________________________________________
-     */
-    
     /**
-     * Filter rows by use of a selector string
-     * /=1                      search for row with key 1
-     * //=1                     search for row with label "1"
-     * //=1,2                   search for rows with label "1" or "2"
-     * //$=3                    search for rows with label ending in "3"
-     * name=Jeff                search for rows with "Jeff" in the "name" column
-     * name|surname=Jeff        search for rows with "Jeff" in the "name" or "surname" column
-     * "name|surname"=Jeff      search for rows with "Jeff" in the "name|surname" column
+     * Remove another grid's columns from this grid.
+     * We remove columns with matching labels
      * 
-     * @param string $query 
-     * @return Smrtr_DataGrid new Smrtr_DataGrid with results
+     * @param Smrtr_DataGrid $Grid Grid to reference against
+     * @return \Smrtr_DataGrid $this
      */
-    public function findRows( $selectorString )
+    public function diffColumns(Smrtr_DataGrid $Grid)
     {
-        if (!strlen($selectorString))
-            return $this;
-        $selectors = $this->extractSearchString($selectorString);
-        $selectorMaps = $this->selectors();
-        $Grid = new Smrtr_DataGrid();
-        $Grid->appendKeys('row', $this->rowKeys);
-        $Grid->appendKeys('column', $this->columnKeys);
-        $Grid->loadArray($this->data);
         $subtractor = 0;
-        foreach ($this->getLabels('row') as $rowkey => $label)
+        foreach ($this->getLabels('column') as $key => $label)
         {
-            $key = $rowkey - $subtractor;
-            $row = $Grid->getRow($key);
-            $keep = true;
-            foreach ($selectors as $selector)
-            {
-                list($fields, $operator, $values) = $selector;
-                if (empty($operator) || !array_key_exists($operator, $selectorMaps))
-                    continue;
-                $matchingFunction = $selectorMaps[$operator];
-                $match = false;
-                foreach ($fields as $field)
-                {
-                    foreach ($values as $value)
-                    {
-                        if ('/' == $field) // Key search
-                            $val1 = $rowkey;
-                        elseif ('//' == $field) // Label search
-                            $val1 = $label;
-                        else // Field search
-                            $val1 = $row[$Grid->getKey('column', $field)];
-                        
-                        if ($matchingFunction($val1, $value))
-                        {
-                            $match = true;
-                            break 2;
-                        }
-                    }
-                }
-                if (!$match)
-                {
-                    $keep = false;
-                    break;
-                }
-            }
-            if (!$keep)
-            {
-                $Grid->deleteRow($key);
-                $subtractor++;
-            }
+            if ($Grid->hasLabel('column', $label))
+                $this->deleteRow($key-$subtractor++);
         }
-        return $Grid;
+        return $this;
     }
     
     /**
-     * Filter columns by use of a selector string
-     * /=1                      search for column with key 1
-     * //=1                     search for column with label "1"
-     * //=1,2                   search for columns with label "1" or "2"
-     * //$=3                    search for columns with label ending in "3"
-     * name=Jeff                search for columns with "Jeff" in the "name" row
-     * name|surname=Jeff        search for columns with "Jeff" in the "name" or "surname" row
-     * "name|surname"=Jeff      search for columns with "Jeff" in the "name|surname" row
+     * Intersection of this grid's columns with the columns of another grid
+     * We intersect by removing columns with labels unique to this grid
      * 
-     * @param string $query 
-     * @return Smrtr_DataGrid new Smrtr_DataGrid with results
+     * @param Smrtr_DataGrid $Grid Grid to reference against
+     * @return \Smrtr_DataGrid $this
      */
-    public function findColumns( $selectorString )
+    public function intersectColumns(Smrtr_DataGrid $Grid)
     {
-        if (!strlen($selectorString))
-            return $this;
-        $selectors = $this->extractSearchString($selectorString);
-        $selectorMaps = $this->selectors();
-        $Grid = new Smrtr_DataGrid();
-        $Grid->appendKeys('column', $this->columnKeys);
-        $Grid->appendKeys('row', $this->rowKeys);
-        $Grid->loadArray($this->data);
-        $subtractor = 0;
-        foreach ($this->getLabels('column') as $columnkey => $label)
+        foreach ($this->getLabels('column') as $key => $label)
         {
-            $key = $columnkey - $subtractor;
-            $column = $Grid->getColumn($key);
-            $keep = true;
-            foreach ($selectors as $selector)
-            {
-                list($fields, $operator, $values) = $selector;
-                if (empty($operator) || !array_key_exists($operator, $selectorMaps))
-                    continue;
-                $matchingFunction = $selectorMaps[$operator];
-                $match = false;
-                foreach ($fields as $field)
-                {
-                    foreach ($values as $value)
-                    {
-                        if ('/' == $field) // Key search
-                            $val1 = $columnkey;
-                        elseif ('//' == $field) // Label search
-                            $val1 = $label;
-                        else // Field search
-                            $val1 = $column[$Grid->getKey('row', $field)];
-                        
-                        if ($matchingFunction($val1, $value))
-                        {
-                            $match = true;
-                            break 2;
-                        }
-                    }
-                }
-                if (!$match)
-                {
-                    $keep = false;
-                    break;
-                }
-            }
-            if (!$keep)
-            {
-                $Grid->deleteColumn($key);
-                $subtractor++;
-            }
+            if (is_null($label) || !$Grid->hasLabel('column', $label))
+                $this->deleteColumn($key);
         }
-        return $Grid;
-    }
-    
-    /**
-     * @internal 
-     */
-    protected function selectors()
-    {
-        if (is_null($this->selectors))
-            $this->selectors = array(
-                '='  => function($val1, $val2) { return ($val1 == $val2); },
-                '!=' => function($val1, $val2) { return ($val1 != $val2); },
-                '>'  => function($val1, $val2) { return ($val1 >  $val2); },
-                '<'  => function($val1, $val2) { return ($val1 <  $val2); },
-                '>=' => function($val1, $val2) { return ($val1 >= $val2); },
-                '<=' => function($val1, $val2) { return ($val1 <= $val2); },
-                '*=' => function($val1, $val2) {
-                    return (stripos($val1, $val2) !== false);
-                },
-                '^=' => function($val1, $val2) {
-                    return (stripos(trim($val1), $val2) === 0);
-                },
-                '$=' => function($val1, $val2) {
-                    $val2 = trim($val2);
-                    $val1 = substr($val1, -1 * strlen($val2));
-                    return (strcasecmp($val1, $val2) == 0);
-                }
-            );
-        return $this->selectors;
-    }
-    
-    /**
-     * @internal 
-     */
-    protected function operatorChars()
-    {
-        if (is_null($this->operatorChars))
-        {
-            $this->operatorChars = array();
-            $operators = array_keys($this->selectors());
-            foreach ($operators as $operator)
-            {
-                for ($n=0; $n < strlen($operator); $n++)
-                    if (! in_array($operator[$n], $this->operatorChars))
-                        $this->operatorChars[] = $operator[$n];
-            }
-        }
-        return $this->operatorChars;
-    }
-    
-    /**
-     * @internal 
-     */
-    protected function extractSearchString( $str )
-    {
-        $count = 0;
-        $selectors = array();
-        while(strlen($str))
-        {
-            $field = (array) $this->extractSearchField($str);
-            $operator = $this->extractSearchOperator($str, $this->operatorChars());
-            $value = (array) $this->extractSearchValue($str);
-            if ($field || strlen("$value"))
-                $selectors[] = array($field, $operator, $value);
-            if (++$count > self::maxSelectors) break;
-        }
-        return $selectors;
-    }
-    
-    /**
-     * @internal 
-     */
-    protected function extractSearchField( &$str )
-    {
-        $field ='';
-        if (preg_match('/^"(.*?[^\\\])"(.*)/', $str, $matches)) // quoted (complex) string
-        {
-            $fields = array();
-            $fields[] = $matches[1];
-            $str = $matches[2];
-            $fields = array_merge($fields, (array)$this->extractSearchField($str));
-            return count($fields) == 1 ? $fields[0] : $fields;
-        }
-        elseif (preg_match('/^(!?[_|.a-zA-Z0-9\/]+)(.*)/', $str, $matches)) // unquoted (simple) string
-        {
-            $field = trim($matches[1], '|');
-            $str = $matches[2];
-            if (strpos($field, '|'))
-                $field = explode('|', $field);
-            return $field;
-        }
-    }
-    
-    /**
-     * @internal 
-     */
-    protected function extractSearchOperator( &$str, array $operators)
-    {
-        $n = 0;
-        $operator = '';
-        while(isset($str[$n]) && in_array($str[$n], $operators) && $n < self::maxOperatorLength)
-        {
-            $operator.= $str[$n];
-            $n++;
-        }
-        if ($operator)
-            $str = substr($str, $n);
-        return $operator;
-    }
-    
-    /**
-     * @internal 
-     */
-    protected function extractSearchValue(&$str)
-    {
-        $str = trim($str);
-        if (! strlen($str)) 
-            return '';
-        if ($str[0] == '"' || $str[0] == "'")
-        {
-            $openingQuote = $str[0];
-            $n = 1;
-        }
-        else
-        {
-            $openingQuote = '';
-            $n = 0;
-        }
-        $value = '';
-        $lastChar = '';
-        do {
-            if (! isset($str[$n])) break;
-            $c = $str[$n];
-            if ($openingQuote)
-            {   // we are in a quoted value string
-                if ($c == $openingQuote)
-                {
-                    if ($lastChar != '\\')
-                    {   // same quote as opening quote, and not escaped = closing quote
-                        $n++;
-                        break;
-                    }
-                    else
-                    {   // intentionally escaped quote (remove the escape char)
-                        $value = rtrim($value, '\\');
-                    }
-                }
-            }
-            else
-            {   // we are in an unquoted value string
-                if ($c == ',' || $c == '|')
-                {
-                    if ($lastChar != '\\') // non-quoted, non-escaped comma terminates the value
-                        break;
-                    else // intentionally escaped comma (remove the escape char)
-                        $value = rtrim($value, '\\');
-                }
-            }
-            $value.= $c;
-            $lastChar = $c;
-        } while(++$n < self::maxValueLength);
-        if (strlen("$value"))
-            $str = substr($str, $n);
-        $str = ltrim($str, ' ,');
-        if (strlen($str) > 1 && substr($str, 0, 1) == '|')
-        {
-            $str = substr($str, 1);
-            // recursive extraction to get all OR values
-            $v = $this->extractSearchValue($str);
-            $value = array($value);
-            if (is_array($v))
-                $value = array_merge($value, $v);
-            else
-                $value[] = $v;
-        }
-        return $value;
+        return $this;
     }
     
     
@@ -1775,7 +2039,7 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param string|null $key Defaults to null. Optional key if looking for specific piece of info.
-     * @return array rowCount=>string, columnCount=>string, rowKeys=>array, columnKeys=>array
+     * @return array rowCount=>int, columnCount=>int, rowKeys=>array, columnKeys=>array
      */
     public function info( $key=null )
     {

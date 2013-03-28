@@ -5,7 +5,7 @@
  * These tests are reproducible and should go a long way to
  * inspire confidence in my DataGrid class.
  */
-require_once('Smrtr/DataGrid.php');
+require_once(APPLICATION_PATH.'/DataGrid.php');
 class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
 {
     public $simpleData = array(
@@ -293,40 +293,14 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
         $this->assertTrue($cond);
     }
     
-    public function testJsonToCsv()
+    public function testSearchRows()
     {
-        $DG = new Smrtr_DataGrid();
-        $DG->loadJSON(
-            "http://api.twitter.com/1/statuses/user_timeline.json?include_rts=true&screen_name=joegreen88&count=10",
-            false, true
-        );
-        $unwanted = array('geo', 'coordinates', 'place', 'retweet_count', 'favorited',
-            'truncated', 'user', 'retweeted', 'contributors');
-        foreach ($unwanted as $label)
-            if ($DG->hasLabel('column', $label))
-                $DG->deleteColumn($label);
-        $DG->printCSV(true, true);
-    }
-    
-    public function testCsvToJson()
-    {
-        $DG = new Smrtr_DataGrid();
-        $csv = <<<CSV
-,created_at,id,id_str,text,source,in_reply_to_status_id,in_reply_to_status_id_str,in_reply_to_user_id,in_reply_to_user_id_str,in_reply_to_screen_name
-0,"Sun Nov 25 11:18:25 +0000 2012",272660508740562945,272660508740562945,"Definitely going to get the data grid on github today. Watch out.",web,,,,,
-1,"Fri Nov 23 16:21:42 +0000 2012",272012055769382913,272012055769382913,"@Stuey_L I can mess with java, but only really get to use it for mobile apps",web,,272011786729955328,272011786729955328,210535114,210535114
-2,"Fri Nov 23 16:17:55 +0000 2012",272011104400572418,272011104400572418,"@Stuey_L lol nah dogg I went the technology route in the end, too much love for shiny things. Still love seein ppl put maths to use tho!!",web,,272010560298692609,272010560298692609,210535114,210535114
-3,"Fri Nov 23 16:15:55 +0000 2012",272010600987631617,272010600987631617,"Anyone know any other specialised tools for database version control?",web,,,,,
-4,"Fri Nov 23 16:14:34 +0000 2012",272010260833779712,272010260833779712,"@Stuey_L ACCA.... is that like the freemasons or something? ;)",web,,272009572506558464,272009572506558464,210535114,210535114
-5,"Fri Nov 23 14:12:41 +0000 2012",271979586290585601,271979586290585601,"don't like liars. I asked him what he ate for lunch and he's telling me pork pies","TweetCaster for Android",,,,,
-6,"Fri Nov 23 13:58:10 +0000 2012",271975934528196609,271975934528196609,"RT @sixthformpoet: That awkward moment when you feel awkward for a moment and tweet about it.","TweetCaster for Android",,,,,
-7,"Fri Nov 23 11:40:36 +0000 2012",271941315284058112,271941315284058112,"http://t.co/z0FAE7ig a small php package which facilitates database version control through svn or your vcs.","TweetCaster for Android",,,,,
-8,"Fri Nov 23 09:22:36 +0000 2012",271906586669219840,271906586669219840,"THis morning I defeated the notorious south eastern train service, although the fight did get delayed and most o the spectators had to stand",web,,,,,
-9,"Fri Nov 23 08:04:53 +0000 2012",271887028621291520,271887028621291520,"It's Friday. There's no way I'm not winning my battles today. #dominatingTheSpace","TweetCaster for Android",,,,,
-CSV;
-        $DG->readCSV($csv);
-        $DG->deleteRow(9);
-        $DG->printJSON(true, true);
+        $Grid = new Smrtr_DataGrid();
+        $Grid->loadCSV($this->_inputPath.'/directgov_external_search_2012-02-05.csv', true, true);
+        $this->assertEquals(84, $Grid->searchRows('term*=job, visits>"10,000"')->info('rowCount'));     // OR
+        $this->assertEquals(9, $Grid->searchRows('term*=job + visits>"10,000"')->info('rowCount'));     // AND
+        $this->assertEquals(51, $Grid->searchRows('term*=job - visits>"10,000"')->info('rowCount'));    // NOT
+        $this->assertEquals(13, $Grid->searchRows('(term*=job - visits>"10,000") + (//>100 - //<400)')->info('rowCount'));
     }
     
 }
