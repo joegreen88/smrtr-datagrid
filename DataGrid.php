@@ -1013,6 +1013,32 @@ class Smrtr_DataGrid
     }
     
     /**
+     * Get row label from a key
+     * 
+     * @api
+     * @param int $key
+     * @return string
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function getRowLabel( $key )
+    {
+        return $this->getLabel('row', $key);
+    }
+    
+    /**
+     * Get column label from a key
+     * 
+     * @api
+     * @param int $key
+     * @return string
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function getColumnLabel( $key )
+    {
+        return $this->getLabel('columnw', $key);
+    }
+    
+    /**
      * Get labels array for rows or columns, indexed by keys
      * 
      * @param string $rowOrColumn 'row' or 'column'
@@ -1020,7 +1046,31 @@ class Smrtr_DataGrid
      */
     public function getLabels( $rowOrColumn )
     {
+        if (!in_array($rowOrColumn, array('column', 'row')))
+            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
         return $this->{$rowOrColumn.'Keys'};
+    }
+    
+    /**
+     * Get row labels array, indexed by keys
+     * 
+     * @param string $rowOrColumn 'row' or 'column'
+     * @return array
+     */
+    public function getRowLabels()
+    {
+        return $this->getLabels('row');
+    }
+    
+    /**
+     * Get column labels array, indexed by keys
+     * 
+     * @param string $rowOrColumn 'row' or 'column'
+     * @return array
+     */
+    public function getColumnLabels()
+    {
+        return $this->getLabels('column');
     }
     
     /**
@@ -1041,6 +1091,28 @@ class Smrtr_DataGrid
     
     /**
      * @api
+     * @param int $key
+     * @return boolean
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function hasRowKey( $key )
+    {
+        return $this->hasKey('row', $key);
+    }
+    
+    /**
+     * @api
+     * @param int $key
+     * @return boolean
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function hasColumnKey( $key )
+    {
+        return $this->hasKey('column', $key);
+    }
+    
+    /**
+     * @api
      * @param string $rowOrColumn 'row' or 'column'
      * @param string $label
      * @return boolean
@@ -1053,6 +1125,28 @@ class Smrtr_DataGrid
         if (!is_string($label))
             throw new Smrtr_DataGrid_Exception("string \$label expected");
         return in_array($label, $this->{$rowOrColumn.'Keys'});
+    }
+    
+    /**
+     * @api
+     * @param string $label
+     * @return boolean
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function hasRowLabel( $label )
+    {
+        return $this->hasKey('row', $label);
+    }
+    
+    /**
+     * @api
+     * @param string $label
+     * @return boolean
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function hasColumnLabel( $label )
+    {
+        return $this->hasLabel('column', $label);
     }
     
     
