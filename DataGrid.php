@@ -606,21 +606,24 @@ class Smrtr_DataGrid
     
     /*
      * ================================================================
-     * Keys & Labels
+     * Keys & Labels (* = API)
      * ================================================================
-     * appendKey
+     * appendKey 
      * appendKeys
-     * updateKey
+     * updateKey | updateLabel *
      * prependKey
-     * deleteKey
-     * swapKeys
-     * moveKey
+     * deleteLastKey
+     * emptyKey | emptyLabel *
+     * swapKeys | swapLabels *
+     * moveKey | moveLabels *
      * trimKeys
      * padKeys
-     * getKey
-     * getLabel
-     * hasKey
-     * hasLabel
+     * getKey *
+     * getKeys *
+     * getLabel *
+     * getLabels *
+     * hasKey *
+     * hasLabel *
      * ________________________________________________________________
      */
     
@@ -678,6 +681,21 @@ class Smrtr_DataGrid
             throw new Smrtr_DataGrid_Exception("non-empty string \$label or null expected");
         $this->{$rowOrColumn.'Keys'}[$key] = $label;
         return $this;
+    }
+    
+    /**
+     * Update the label for an existing key
+     * 
+     * @api
+     * @param string $rowOrColumn 'row' or 'column'
+     * @param int $key
+     * @param string|null $label
+     * @return \Smrtr_DataGrid $this
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function updateLabel( $rowOrColumn, $key, $label=null )
+    {
+        return $this->updateKey($rowOrColumn, $key, $label=null);
     }
     
     /**
@@ -916,6 +934,32 @@ class Smrtr_DataGrid
     }
     
     /**
+     * Get row key from a key or label
+     * 
+     * @api
+     * @param int|string $keyOrLabel
+     * @return int
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function getRowKey( $keyOrLabel )
+    {
+        return $this->getKey('row', $keyOrLabel);
+    }
+    
+    /**
+     * Get column key from a key or label
+     * 
+     * @api
+     * @param int|string $keyOrLabel
+     * @return int
+     * @throws Smrtr_DataGrid_Exception 
+     */
+    public function getColumnKey( $keyOrLabel )
+    {
+        return $this->getKey('column', $keyOrLabel);
+    }
+    
+    /**
      * Get keys array for rows or columns
      * 
      * @param string $rowOrColumn 'row' or 'column'
@@ -923,7 +967,29 @@ class Smrtr_DataGrid
      */
     public function getKeys( $rowOrColumn )
     {
+        if (!in_array($rowOrColumn, array('column', 'row')))
+            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
         return array_keys($this->{$rowOrColumn.'Keys'});
+    }
+    
+    /**
+     * Get row keys array
+     * 
+     * @return array 
+     */
+    public function getRowKeys()
+    {
+        return $this->getKeys('row');
+    }
+    
+    /**
+     * Get column keys array
+     * 
+     * @return array 
+     */
+    public function getColumnKeys()
+    {
+        return $this->getKeys('column');
     }
     
     /**
