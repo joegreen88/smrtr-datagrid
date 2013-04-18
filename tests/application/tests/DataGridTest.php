@@ -28,6 +28,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
         $expRowKeys = array('row0', 'row1', 'row2');
         $this->assertEquals($expColKeys, $grid->columnLabels());
         $this->assertEquals($expRowKeys, $grid->rowLabels());
+        
     }
     
     public function testSetLabels()
@@ -256,10 +257,10 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
         $g2 = new Smrtr_DataGrid($this->simpleData);
         $g2->transpose();
         $self = $this;
-        $g1->eachRow(function($key, $data) use($g2, $self){
+        $g1->eachRow(function($key, $label, $data) use($g2, $self){
             $cond = $g2->getColumn($key) == $data;
             $self->assertTrue($cond);
-        })->eachColumn(function($key, $data) use($g2, $self){
+        })->eachColumn(function($key, $label, $data) use($g2, $self){
             $cond = $g2->getRow($key) == $data;
             $self->assertTrue($cond);
         });
