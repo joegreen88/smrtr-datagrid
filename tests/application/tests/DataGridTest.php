@@ -21,6 +21,13 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
         'row2' => array('2.0', '2.1', '2.2')
     );
     
+    public $partialData = array(
+        array("one", 2, 3.3),
+        array(null, null, null, null),
+        array("two", 1),
+        array()
+    );
+    
     public function testGetLabels()
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
@@ -304,4 +311,11 @@ class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
         $this->assertEquals(13, $Grid->searchRows('(term*=job - visits>"10,000") + (//>100 - //<400)')->info('rowCount'));
     }
     
+    public function testDeleteEmptyColumnsAndRows()
+    {
+        $Grid = new Smrtr_DataGrid($this->partialData);
+        $Grid = $Grid->deleteEmptyColumns()->deleteEmptyRows();
+        $this->assertEquals(2, $Grid->info('rowCount'));
+        $this->assertEquals(3, $Grid->info('columnCount'));
+    }
 }
