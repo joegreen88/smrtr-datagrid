@@ -630,7 +630,7 @@ class Smrtr_DataGrid
     /**
      * @internal
      */
-    public function appendKey( $rowOrColumn, $label=null )
+    public function appendKey( $rowOrColumn, $label=null, $increaseCount=false )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
             throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
@@ -644,16 +644,18 @@ class Smrtr_DataGrid
         elseif (!is_null($label))
             throw new Smrtr_DataGrid_Exception("non-empty string \$label or null expected");
         array_push($this->{$rowOrColumn.'Keys'}, $label);
+        if ($increaseCount)
+            $this->{$rowOrColumn.'s'}++;
         return $this;
     }
     
     /**
      * @internal
      */
-    public function appendKeys( $rowOrColumn, array $labels)
+    public function appendKeys( $rowOrColumn, array $labels, $increaseCount=false )
     {
         foreach ($labels as $label)
-            $this->appendKey($rowOrColumn, $label);
+            $this->appendKey($rowOrColumn, $label, $increaseCount);
     }
     
     /**
@@ -1171,6 +1173,7 @@ class Smrtr_DataGrid
      * mergeRows
      * diffRows
      * intersectRows
+     * deleteEmptyRows
      * ________________________________________________________________
      */
     
@@ -1500,6 +1503,7 @@ class Smrtr_DataGrid
      * 
      * The $returnVectorObject parameter was added in version 1.1
      * 
+     * @api
      * @param callable $callback Called on each row: $filter($key, $label, $row)
      * @param boolean $returnVectorObject 
      * @return Smrtr_DataGrid new Smrtr_DataGrid with results
@@ -1512,13 +1516,13 @@ class Smrtr_DataGrid
         if (!is_callable($callback))
             throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
         $Grid = new Smrtr_DataGrid;
-        $Grid->appendKeys('column', $this->columnKeys);
+        $Grid->appendKeys('column', $this->columnKeys, true);
         foreach ($this->rowKeys as $key => $label)
         {
             $row = $returnVectorObject ? $this->row($key) : $this->getRow($key);
             $result = (boolean) $callback($key, $label, $row);
             if ($result)
-                $Grid->appendRow($returnVectorObject ? $row->data() : $row, $label);
+                $Grid->appendRow(($returnVectorObject ? $row->data() : $row), $label);
         }
         return $Grid;
     }
@@ -1527,6 +1531,7 @@ class Smrtr_DataGrid
      * Merge another grid's rows into this grid.
      * We merge by appending rows with null or unique labels
      * 
+     * @api
      * @param Smrtr_DataGrid $Grid Grid to merge with this
      * @return \Smrtr_DataGrid $this
      */
@@ -1565,6 +1570,7 @@ class Smrtr_DataGrid
      * Remove another grid's rows from this grid.
      * We remove rows with matching labels
      * 
+     * @api
      * @param Smrtr_DataGrid $Grid Grid to reference against
      * @return \Smrtr_DataGrid $this
      */
@@ -1583,6 +1589,7 @@ class Smrtr_DataGrid
      * Intersection of this grid's rows with the rows of another grid
      * We intersect by removing rows with labels unique to this grid
      * 
+     * @api
      * @param Smrtr_DataGrid $Grid Grid to reference against
      * @return \Smrtr_DataGrid $this
      */
@@ -1595,6 +1602,23 @@ class Smrtr_DataGrid
                 $this->deleteRow($key-$subtractor++);
         }
         return $this;
+    }
+    
+    /**
+     * Deletes empty rows (rows with all null values) and returns resulting grid.
+     * To overwrite this object just call like so: $grid = $grid->deleteEmptyRows();
+     * 
+     * @api
+     * @return \Smrtr_DataGrid new Smrtr_DataGrid with results
+     */
+    public function deleteEmptyRows()
+    {
+        return $this->filterRows(function($key, $label, $row) {
+            return array_reduce($row, function(&$keep, $value){
+                $keep = is_null($value) ? $keep : true;
+                return $keep;
+            }, false);
+        });
     }
     
     
@@ -1639,6 +1663,7 @@ class Smrtr_DataGrid
             $column = $column->data();
         if (!is_array($column))
             throw new Smrtr_DataGrid_Exception("array expected");
+        
         $this->appendKey('column', $label);
         $colVector = $this->_normalizeVector($column, $this->rows);
         if (count($colVector) > $this->rows)
@@ -1647,8 +1672,12 @@ class Smrtr_DataGrid
             for ($i=0; $i<$lim; $i++)
                 $this->appendRow(array(), null);
         }
-        foreach ($this->data as $i => $row)
+        foreach (array_keys($this->rowKeys) as $i)
+        {
+            if (!array_key_exists($i, $this->data))
+                $this->data[$i] = array();
             array_push($this->data[$i], array_shift($colVector));
+        }
         $this->columns++;
         return $this;
     }
@@ -1968,6 +1997,7 @@ class Smrtr_DataGrid
      * 
      * The $returnVectorObject parameter was added in version 1.1
      * 
+     * @api
      * @param callable $callback Called on each column: $callback($key, $label, $column)
      * @param boolean $returnVectorObject
      * @return Smrtr_DataGrid new Smrtr_DataGrid with results
@@ -1980,13 +2010,13 @@ class Smrtr_DataGrid
         if (!is_callable($callback))
             throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
         $Grid = new Smrtr_DataGrid;
-        $Grid->appendKeys('row', $this->rowKeys, false);
+        $Grid->appendKeys('row', $this->rowKeys, true);
         foreach ($this->columnKeys as $key => $label)
         {
             $column = $returnVectorObject ? $this->column($key) : $this->getColumn($key);
             $result = (boolean) $callback($key, $label, $column);
             if ($result)
-                $Grid->appendColumn($returnVectorObject ? $column->data() : $column, $label);
+                $Grid->appendColumn(($returnVectorObject ? $column->data() : $column), $label);
         }
         return $Grid;
     }
@@ -1995,6 +2025,7 @@ class Smrtr_DataGrid
      * Merge another grid's columns into this grid.
      * We merge by appending columns with null or unique labels
      * 
+     * @api
      * @param Smrtr_DataGrid $Grid Grid to merge with this
      * @return \Smrtr_DataGrid $this
      */
@@ -2032,6 +2063,7 @@ class Smrtr_DataGrid
      * Remove another grid's columns from this grid.
      * We remove columns with matching labels
      * 
+     * @api
      * @param Smrtr_DataGrid $Grid Grid to reference against
      * @return \Smrtr_DataGrid $this
      */
@@ -2050,6 +2082,7 @@ class Smrtr_DataGrid
      * Intersection of this grid's columns with the columns of another grid
      * We intersect by removing columns with labels unique to this grid
      * 
+     * @api
      * @param Smrtr_DataGrid $Grid Grid to reference against
      * @return \Smrtr_DataGrid $this
      */
@@ -2061,6 +2094,23 @@ class Smrtr_DataGrid
                 $this->deleteColumn($key);
         }
         return $this;
+    }
+    
+    /**
+     * Deletes empty columns (columns with all null values) and returns resulting grid.
+     * To overwrite this object just call like so: $grid = $grid->deleteEmptyColumns();
+     * 
+     * @api
+     * @return \Smrtr_DataGrid new Smrtr_DataGrid with results
+     */
+    public function deleteEmptyColumns()
+    {
+        return $this->filterColumns(function($key, $label, $column) {
+            return array_reduce($column, function(&$keep, $value){
+                $keep = is_null($value) ? $keep : true;
+                return $keep;
+            }, false);
+        });
     }
     
     
