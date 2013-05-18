@@ -1468,7 +1468,7 @@ class Smrtr_DataGrid
         $searchKey = $this->getKey('column', $byColumnKeyOrLabel);
         $stack = array(); $keyStack = array();
         $self = $this;
-        $this->eachRow( function($i, $row) use(&$stack, &$keyStack, $searchKey, $self)
+        $this->eachRow( function($i, $label, $row) use(&$stack, &$keyStack, $searchKey, $self)
         {
             $val = $row[$searchKey];
             if (!array_key_exists($val, $stack))
@@ -1953,7 +1953,7 @@ class Smrtr_DataGrid
         $searchKey = $this->getKey('row', $byRowKeyOrLabel);
         $stack = array(); $keyStack = array();
         $self = $this;
-        $this->eachColumn( function($i, $column) use(&$stack, &$keyStack, $searchKey, $self)
+        $this->eachColumn( function($i, $label, $column) use(&$stack, &$keyStack, $searchKey, $self)
         {
             $val = $column[$searchKey];
             if (!array_key_exists($val, $stack))
