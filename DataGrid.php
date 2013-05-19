@@ -1282,6 +1282,44 @@ class Smrtr_DataGrid
     }
     
     /**
+     * Get an array with counts of occurences of each value in a row
+     * 
+     * @param int|string $keyOrLabel
+     * @param boolean $verbose (optional) return array with reoccurring values appearing multiple times
+     * @return array [ value => count, ... ] or [ [ value, count ], ... ] if $verbose is on
+     */
+    public function getRowCounts( $keyOrLabel, $verbose=false )
+    {
+        $counts = array();
+        $keys = array();
+        $i = $this->getKey('row', $keyOrLabel);
+        for ($j=0; $j<$this->columns; $j++)
+        {
+            $val = $this->data[$i][$j];
+            if (array_key_exists($val, $counts)) {
+                $counts[$val]++;
+                if ($verbose)
+                    $keys[$val][] = $j;
+            }
+            else {
+                $counts[$val] = 1;
+                if ($verbose)
+                    $keys[$val] = array($j);
+            }
+        }
+        if ($verbose) {
+            $tmp = array();
+            foreach ($keys as $val => $Keys) {
+                foreach ($Keys as $Key)
+                    $tmp[$Key] = array($val, $counts[$val]);
+            }
+            ksort($tmp);
+            return $tmp;
+        }
+        return $counts;
+    }
+    
+    /**
      * Fill a row with null values
      * 
      * @api
@@ -1759,6 +1797,44 @@ class Smrtr_DataGrid
     public function getColumnDistinct( $keyOrLabel )
     {
         return array_keys( array_flip( $this->getColumn($keyOrLabel) ) );
+    }
+    
+    /**
+     * Get an array with counts of occurences of each value in a column
+     * 
+     * @param int|string $keyOrLabel
+     * @param boolean $verbose (optional) return array with reoccurring values appearing multiple times
+     * @return array [ value => count, ... ] or [ [ value, count ], ... ] if $verbose is on
+     */
+    public function getColumnCounts( $keyOrLabel, $verbose=false )
+    {
+        $counts = array();
+        $keys = array();
+        $i = $this->getKey('column', $keyOrLabel);
+        for ($j=0; $j<$this->rows; $j++)
+        {
+            $val = $this->getValue($j, $i);
+            if (array_key_exists($val, $counts)) {
+                $counts[$val]++;
+                if ($verbose)
+                    $keys[$val][] = $j;
+            }
+            else {
+                $counts[$val] = 1;
+                if ($verbose)
+                    $keys[$val] = array($j);
+            }
+        }
+        if ($verbose) {
+            $tmp = array();
+            foreach ($keys as $val => $Keys) {
+                foreach ($Keys as $Key)
+                    $tmp[$Key] = array($val, $counts[$val]);
+            }
+            ksort($tmp);
+            return $tmp;
+        }
+        return $counts;
     }
     
     /**
