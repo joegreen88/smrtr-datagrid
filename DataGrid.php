@@ -10,7 +10,7 @@ require_once('DataGridVector.php');
  * 
  * @author Joe Green
  * @package SmrtrLib
- * @version 1.1
+ * @version 1.2
  * @todo XML import/export and methods
  */
 
@@ -320,6 +320,8 @@ class Smrtr_DataGrid
      */
     private function extractSearchExpression( $str )
     {
+        if (!is_string($str) || !strlen($str))
+            throw new Smrtr_DataGrid_Exception("Non-empty string expected");
         $fields = (array) $this->extractSearchField($str);
         $operation = $this->extractSearchOperation($str, self::selectorChars());
         $values = (array) $this->extractSearchValue($str);
@@ -436,135 +438,99 @@ class Smrtr_DataGrid
     }
     
     /**
-     * @internal
+     * NEW SEARCH METHOD
      */
-    private function evaluateSearchOperand( $s, $rowOrColumn )
+    public function search( $str, $rowOrColumn )
     {
-        if ($s instanceof Smrtr_DataGrid)
-            return $s;
+        if (!is_string($str)) throw new Smrtr_DataGrid_Exception("String expected");
+        if (!strlen($str)) return $this;
         if (!in_array($rowOrColumn, array('row','column')))
             throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
-        $rowOrColumnInverse = ($rowOrColumn == 'row') ? 'column' : 'row';
-        if (!is_string($s) || !strlen($s))
-            throw new Smrtr_DataGrid_Exception("Non-empty string expected");
-        $selector = $this->extractSearchExpression($s);
-        $selectorMaps = self::selectors();
+        $tokens = self::infixToRPN(self::extractSearchTokens($str));
         $Grid = new Smrtr_DataGrid();
-        $Grid->appendKeys('row', $this->rowKeys);
-        $Grid->appendKeys('column', $this->columnKeys);
-        $Grid->loadArray($this->data);
-        $subtractor = 0;
-        foreach ($this->getLabels($rowOrColumn) as $Key => $label)
+        if ($rowOrColumn == 'row') {
+            $count = $this->rows;
+            $labels = $this->getRowLabels();
+            $Grid->appendKeys('column', $this->columnKeys, true);
+        }
+        else {
+            $count = $this->columns;
+            $labels = $this->getColumnLabels();
+            $Grid->appendKeys('row', $this->rowKeys, true);
+        }
+        for ($i=0; $i<$count; $i++)
         {
-            $key = $Key - $subtractor;
-            $v = $Grid->{'get'.ucfirst($rowOrColumn)}($key);
-            list($fields, $operator, $values) = $selector;
-            if (empty($operator) || !array_key_exists($operator, $selectorMaps))
-                throw new Smrtr_DataGrid_Exception("Invalid selector provided");
-            $matchingFunction = $selectorMaps[$operator];
-            $match = false;
-            foreach ($fields as $field)
-            {
-                foreach ($values as $value)
+            # BEGIN LOOPING ROWS AND COLUMNS
+            $Tokens = $tokens;
+            $isMatch = true;
+            $v = $this->{'get'.ucfirst($rowOrColumn)}($i);
+            if (count($Tokens) > 1) {
+                $stack = array();
+                foreach ($Tokens as $Token)
                 {
-                    if ('/' == $field) // Key search
-                        $val1 = $Key;
-                    elseif ('//' == $field) // Label search
-                        $val1 = $label;
-                    else // Field search
-                        $val1 = $v[$Grid->getKey($rowOrColumnInverse, $field)];
-                    if ($matchingFunction($val1, $value))
-                    {
-                        $match = true;
-                        break 2;
+                    if (!self::isSetOperator($Token)) array_unshift($stack, $Token);
+                    else {
+                        $t2 = array_shift($stack);
+                        $t1 = array_shift($stack);
+                        $t1 = is_bool($t1) ? $t1 : $this->evaluateSearchVector($v, $i, $labels[$i], $rowOrColumn, $t1);
+                        $t2 = is_bool($t2) ? $t2 : $this->evaluateSearchVector($v, $i, $labels[$i], $rowOrColumn, $t2);
+                        if ('+' == $Token) {
+                            # INTERSECTION, AND
+                            array_unshift($stack, $t1 && $t2);
+                        }
+                        elseif ('-' == $Token) {
+                            # DIFFERENCE, NOT
+                            array_unshift($stack, $t1 && !$t2);
+                        }
+                        elseif (',' == $Token) {
+                            # UNION, OR
+                            array_unshift($stack, $t1 || $t2);
+                        }
                     }
                 }
+                $isMatch = array_shift($stack);
             }
-            if (!$match)
-            {
-                $Grid->deleteRow($key);
-                $subtractor++;
+            elseif (count($Tokens) == 1)
+                $isMatch = $this->evaluateSearchVector($v, $i, $labels[$i], $rowOrColumn, array_shift($Tokens));
+            if ($isMatch) {
+                $Grid->{'append'.ucfirst($rowOrColumn)}($v, $labels[$i]);
             }
+            # END LOOPING ROWS OR COLUMNS
         }
         return $Grid;
     }
     
-    /**
-     * @internal
+    /** 
+     * NEW EVALUATION METHOD
      */
-    private function evaluateSearchAND( $topStack, $tmp, $rowOrColumn )
+    private function evaluateSearchVector( $v, $key, $label, $rowOrColumn, $selector )
     {
-        if (!in_array($rowOrColumn, array('row','column')))
-            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
-        $Grid = $this->evaluateSearchOperand($topStack, $rowOrColumn);
-        $Grid2 = $this->evaluateSearchOperand($tmp, $rowOrColumn);
-        return $Grid->{'intersect'.ucfirst($rowOrColumn).'s'}($Grid2);
-    }
-    
-    /**
-     * @internal
-     */
-    private function evaluateSearchDIFF( $topStack, $tmp, $rowOrColumn )
-    {
-        if (!in_array($rowOrColumn, array('row','column')))
-            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
-        $Grid = $this->evaluateSearchOperand($topStack, $rowOrColumn);
-        $Grid2 = $this->evaluateSearchOperand($tmp, $rowOrColumn);
-        return $Grid->{'diff'.ucfirst($rowOrColumn).'s'}($Grid2);
-    }
-    
-    /**
-     * @internal
-     */
-    private function evaluateSearchOR( $topStack, $tmp, $rowOrColumn )
-    {
-        if (!in_array($rowOrColumn, array('row','column')))
-            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
-        $Grid = $this->evaluateSearchOperand($topStack, $rowOrColumn);
-        $Grid2 = $this->evaluateSearchOperand($tmp, $rowOrColumn);
-        return $Grid->{'merge'.ucfirst($rowOrColumn).'s'}($Grid2);
-    }
-    
-    /**
-     * @internal
-     */
-    private function evaluateSearch( array $tokens, $rowOrColumn )
-    {
-        if (!in_array($rowOrColumn, array('row','column')))
-            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
-        $stack = array();
-        if (count($tokens) > 1)
+        if (is_bool($v)) return $v;
+        if ('row' == $rowOrColumn) $rowOrColumnInverse = 'column';
+        elseif ('column' == $rowOrColumn) $rowOrColumnInverse = 'row';
+        else throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
+        $selector = $this->extractSearchExpression($selector);
+        $selectorMaps = self::selectors();
+        list($fields, $operator, $values) = $selector;
+        if (empty($operator) || !array_key_exists($operator, $selectorMaps))
+            throw new Smrtr_DataGrid_Exception("Invalid selector provided");
+        $matchingFunction = $selectorMaps[$operator];
+        $match = false;
+        foreach ($fields as $field)
         {
-            foreach ($tokens as $token)
+            foreach ($values as $value)
             {
-                if (!self::isSetOperator($token))
+                if ('/' == $field) $val1 = $key;
+                elseif ('//' == $field) $val1 = $label;
+                else $val1 = $v[$this->getKey($rowOrColumnInverse, $field)];
+                if ($matchingFunction($val1, $value))
                 {
-                    array_unshift($stack, $token);
-                }
-                else
-                {
-                    switch($token)
-                    {
-                        case '+':
-                            $method = 'evaluateSearchAND';  break;
-                        case '-':
-                            $method = 'evaluateSearchDIFF';  break;
-                        case ',':
-                            $method = 'evaluateSearchOR';  break;
-                        default:
-                            throw new Smrtr_DataGrid_Exception("Unknown set operator ".$token);
-                            break;
-                    }
-                    $tmp = array_shift($stack);
-                    array_unshift( $stack, $this->$method( array_shift($stack), $tmp, $rowOrColumn ) );
+                    $match = true;
+                    break 2;
                 }
             }
-            return array_shift($stack);
         }
-        elseif (count($tokens) == 1)
-        {
-            return $this->evaluateSearchOperand(array_shift($tokens), $rowOrColumn);
-        }
+        return $match;
     }
     
     /**
@@ -577,12 +543,7 @@ class Smrtr_DataGrid
      */
     public function searchRows( $s )
     {
-        if (!is_string($s))
-            throw new Smrtr_DataGrid_Exception("String expected");
-        if (!strlen($s))
-            return $this;
-        $tokens = self::infixToRPN(self::extractSearchTokens($s));
-        return $this->evaluateSearch($tokens, 'row');
+        return $this->search($s, 'row');
     }
     
     /**
@@ -595,12 +556,7 @@ class Smrtr_DataGrid
      */
     public function searchColumns( $s )
     {
-        if (!is_string($s))
-            throw new Smrtr_DataGrid_Exception("String expected");
-        if (!strlen($s))
-            return $this;
-        $tokens = self::infixToRPN(self::extractSearchTokens($s));
-        return $this->evaluateSearch($tokens, 'column');
+        return $this->search($s, 'column');
     }
         
     
@@ -1183,19 +1139,20 @@ class Smrtr_DataGrid
      * @api
      * @param array $row
      * @param string|null $label [optional] string label for the appended row
+     * @param boolean $internal @internal
      * @return \Smrtr_DataGrid $this
      * @throws Smrtr_DataGrid_Exception
      * @uses Smrtr_DataGrid::appendKey()
      * @uses Smrtr_DataGrid::_normalizeVector()
      */
-    public function appendRow($row, $label=null)
+    public function appendRow($row, $label=null, $internal=false)
     {
         if ($row instanceof Smrtr_DataGridVector)
             $row = $row->data();
         if (!is_array($row))
             throw new Smrtr_DataGrid_Exception("array expected");
         
-        $this->appendKey('row', $label);
+        if (!$internal) $this->appendKey('row', $label);
         $rowVector = $this->_normalizeVector($row, $this->columns);
         if (count($rowVector) > $this->columns)
         {
@@ -1690,19 +1647,20 @@ class Smrtr_DataGrid
      * @api
      * @param array $column
      * @param string|null $label [optional] string label for the appended column
+     * @param boolean $internal @internal
      * @return \Smrtr_DataGrid $this
      * @throws Smrtr_DataGrid_Exception
      * @uses Smrtr_DataGrid::appendKey()
      * @uses Smrtr_DataGrid::_normalizeVector()
      */
-    public function appendColumn( $column, $label=null )
+    public function appendColumn( $column, $label=null, $internal=false )
     {
         if ($column instanceof Smrtr_DataGridVector)
             $column = $column->data();
         if (!is_array($column))
             throw new Smrtr_DataGrid_Exception("array expected");
         
-        $this->appendKey('column', $label);
+        if (!$internal) $this->appendKey('column', $label);
         $colVector = $this->_normalizeVector($column, $this->rows);
         if (count($colVector) > $this->rows)
         {
