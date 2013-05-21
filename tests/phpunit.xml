@@ -1,4 +1,4 @@
-<phpunit bootstrap="./application/bootstrap.php" colors="true">
+<phpunit bootstrap="./bootstrap.php" colors="true">
     
     <testsuite name="smrtr-datagrid">
         <directory>./</directory>
@@ -11,9 +11,9 @@
     </filter>
     
     <logging>
-        <log type="coverage-html" target="./report" charset="UTF-8"
+        <log type="coverage-html" target="./output" charset="UTF-8"
         yui="true" highlight="true" lowUpperBound="50" highUpperBound="80" />
-        <log type="testdox" target="./log/testdox.html" />
+        <log type="testdox" target="./output/testdox.html" />
     </logging>
     
 </phpunit>

@@ -1,6 +1,8 @@
 <?php
+define('TESTS_PATH', realpath(TESTS_APPLICATION_PATH.'/..'));
+require_once ('PHPUnit/Autoload.php');
 
-class Smrtr_ControllerTestCase extends Zend_Test_PHPUnit_ControllerTestCase
+class Smrtr_DataGrid_ControllerTestCase extends PHPUnit_Framework_TestCase
 {    
     protected $_inputPath;
     

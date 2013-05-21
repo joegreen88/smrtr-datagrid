@@ -1,9 +1,3 @@
-/tests/log
-/tests/log/*
-/tests/log/**
-/tests/report
-/tests/report/*
-/tests/report/**
 /docs
 /docs/*
 /docs/**

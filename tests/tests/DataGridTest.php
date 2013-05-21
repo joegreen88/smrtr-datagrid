@@ -5,8 +5,8 @@
  * These tests are reproducible and should go a long way to
  * inspire confidence in my DataGrid class.
  */
-require_once(APPLICATION_PATH.'/DataGrid.php');
-class Smrtr_Test_DataGridTest extends Smrtr_ControllerTestCase
+require_once(TESTS_PATH.'/../DataGrid.php');
+class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
 {
     public $simpleData = array(
         array('0.0', '0.1', '0.2'),
