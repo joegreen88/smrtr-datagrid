@@ -1,4 +1,4 @@
-[ ![Codeship Status for joegreen88/smrtr-datagrid](https://www.codeship.io/projects/fb908060-a44b-0130-ffc3-1e80e73e8cde/status?branch=master)](https://www.codeship.io/projects/3644)
+[ ![Codeship Status for joegreen88/smrtr-datagrid](https://www.codeship.io/projects/fb908060-a44b-0130-ffc3-1e80e73e8cde/status?branch=master)](https://www.codeship.io/projects/3644) [![Coverage Status](https://coveralls.io/repos/joegreen88/smrtr-datagrid/badge.png?branch=master)](https://coveralls.io/r/joegreen88/smrtr-datagrid?branch=master)
 
 # Smrtr DataGrid
 
