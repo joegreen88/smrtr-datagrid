@@ -334,8 +334,8 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $col0 = ($Grid->getColumnDistinct(0) === array(1, 5, 4, 2));
         $col1 = ($Grid->getColumnDistinct(1) === array(2, 4, 1));
         $col2 = ($Grid->getColumnDistinct(2) === array(3, 5, 1));
-        $col3 = ($Grid->getColumnDistinct(2) === array(4, 2, 3));
-        $col4 = ($Grid->getColumnDistinct(2) === array(5, 1, 2));
+        $col3 = ($Grid->getColumnDistinct(3) === array(4, 2, 3));
+        $col4 = ($Grid->getColumnDistinct(4) === array(5, 1, 2));
         $this->assertTrue($col0 && $col1 && $col2 && $col3 && $col4);
         // getRowDistinct()
         $row0 = ($Grid->getRowDistinct(0) === array(1, 2, 3, 4, 5));
