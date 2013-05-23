@@ -28,6 +28,14 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         array()
     );
     
+    public $numberData =array(
+        array(1, 2, 3, 4, 5),
+        array(5, 4, 3, 2, 1),
+        array(4, 4, 3, 2),
+        array(2, 1, 5, 3, 2),
+        array(5, 1, 1)
+    );
+    
     public function testGetLabels()
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
@@ -317,5 +325,36 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $Grid = $Grid->deleteEmptyColumns()->deleteEmptyRows();
         $this->assertEquals(2, $Grid->info('rowCount'));
         $this->assertEquals(3, $Grid->info('columnCount'));
+    }
+    
+    public function testGetDistinct()
+    {
+        $Grid = new Smrtr_DataGrid($this->numberData);
+        // getColumnDistinct
+        $col0 = ($Grid->getColumnDistinct(0) === array(1, 5, 4, 2));
+        $col1 = ($Grid->getColumnDistinct(1) === array(2, 4, 1));
+        $col2 = ($Grid->getColumnDistinct(2) === array(3, 5, 1));
+        $col3 = ($Grid->getColumnDistinct(2) === array(4, 2, 3));
+        $col4 = ($Grid->getColumnDistinct(2) === array(5, 1, 2));
+        $this->assertTrue($col0 && $col1 && $col2 && $col3 && $col4);
+        // getRowDistinct()
+        $row0 = ($Grid->getRowDistinct(0) === array(1, 2, 3, 4, 5));
+        $row1 = ($Grid->getRowDistinct(1) === array(5, 4, 3, 2, 1));
+        $row2 = ($Grid->getRowDistinct(2) === array(4, 3, 2));
+        $row3 = ($Grid->getRowDistinct(3) === array(2, 1, 5, 3));
+        $row4 = ($Grid->getRowDistinct(4) === array(5, 1));
+        $this->assertTrue($row0 && $row1 && $row2 && $row3 && $row4);
+    }
+    
+    public function testGetCounts()
+    {
+        $Grid = new Smrtr_DataGrid($this->numberData);
+        // getColumnCounts
+        $col0 = ($Grid->getColumnCounts(0) === array(1=>1, 5=>2, 4=>1, 2=>1));
+        $col1 = ($Grid->getColumnCounts(1) === array(2=>1, 4=>2, 1=>2));
+        $col2 = ($Grid->getColumnCounts(2) === array(3=>3, 5=>1, 1=>1));
+        $this->assertTrue($col0 && $col1 && $col2);
+        // @todo: col3, col4
+        // @todo: getColumnCounts(verbose), getRowCounts, getRowCounts(verbose)
     }
 }
