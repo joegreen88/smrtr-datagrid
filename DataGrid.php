@@ -1235,7 +1235,7 @@ class Smrtr_DataGrid
      */
     public function getRowDistinct( $keyOrLabel )
     {
-        return array_keys( array_flip( $this->getRow($keyOrLabel) ) );
+        return array_keys( @ array_flip( $this->getRow($keyOrLabel) ) );
     }
     
     /**
@@ -1754,7 +1754,7 @@ class Smrtr_DataGrid
      */
     public function getColumnDistinct( $keyOrLabel )
     {
-        return array_keys( array_flip( $this->getColumn($keyOrLabel) ) );
+        return array_keys( @ array_flip( $this->getColumn($keyOrLabel) ) );
     }
     
     /**
