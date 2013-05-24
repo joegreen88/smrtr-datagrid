@@ -87,7 +87,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         // Keys
         $this->assertTrue($grid->hasRowKey(2) && $grid->hasColumnKey(0));
-        $this->assertTrue($grid->hasRowKey(4) || $grid->hasColumnKey(4));
+        $this->assertFalse($grid->hasRowKey(4) || $grid->hasColumnKey(4));
         // Labels
         $this->assertTrue($grid->hasRowLabel('row0') && $grid->hasColumnLabel('col2'));
         $this->assertFalse($grid->hasRowLabel('noMatch') || $grid->hasColumnLabel('noMatch'));
