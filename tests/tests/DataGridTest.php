@@ -268,7 +268,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         $grid->deleteRow('row2');
         $this->assertSame(2, count($grid->getColumn(0)), count($grid->getRowKeys()), $grid->info('rowCount'));
-        $this->deleteRow(0);
+        $grid->deleteRow(0);
         $this->assertSame(1, count($grid->getColumn(0)), count($grid->getRowKeys()), $grid->info('rowCount'));
         $this->assertSame(array('row1'), $grid->getRowLabels());
         $this->assertTrue($this->isValid($grid));
@@ -279,7 +279,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         $grid->emptyColumn(1);
         $grid->emptyColumn('col0');
-        $this->assertSame(array(null, null, null), $this->getColumn('col1'), $this->getColumn(0));
+        $this->assertSame(array(null, null, null), $grid->getColumn('col1'), $grid->getColumn(0));
         $this->assertTrue($this->isValid($grid));
     }
 
@@ -288,7 +288,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         $grid->emptyRow('row1');
         $grid->emptyRow(0);
-        $this->assertSame(array(null, null, null), $this->getRow(1), $this->getRow('row0'));
+        $this->assertSame(array(null, null, null), $grid->getRow(1), $grid->getRow('row0'));
         $this->assertTrue($this->isValid($grid));
     }
 
