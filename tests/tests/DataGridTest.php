@@ -51,7 +51,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         }
         return (
             $rows == $info['rowCount'] && $columns == $info['columnCount'] 
-            && $rows == count($info['rowKeys']) && $columns == count($info['columnCount'])
+            && $rows == count($info['rowKeys']) && $columns == count($info['columnKeys'])
         );
     }
 
