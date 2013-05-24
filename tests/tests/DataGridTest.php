@@ -35,6 +35,26 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         array(2, 1, 5, 3, 2),
         array(5, 1, 1)
     );
+
+    public function testLoadArrays()
+    {
+        // non-associative array
+        $grid1 = new Smrtr_DataGrid($this->simpleData);
+        $grid2 = new Smrtr_DataGrid;
+        $grid2->loadArray($this->simpleData);
+        $this->assertSame($this->simpleData, $grid1->getArray(), $grid2->getArray());
+        // associative array
+        $grid1 = new Smrtr_DataGrid($this->labelledData, true, true);
+        $grid2 = new Smrtr_DataGrid;
+        $grid2->loadArray($this->labelledData, true, true);
+        $this->assertSame($this->simpleData, $grid1->getArray(), $grid2->getArray());
+        $associativeData = array(
+            'row0' => array('col0'=>'0.0', 'col1'=>'0.1', 'col2'=>'0.2'),
+            'row1' => array('col0'=>'1.0', 'col1'=>'1.1', 'col2'=>'1.2'),
+            'row2' => array('col0'=>'2.0', 'col1'=>'2.1', 'col2'=>'2.2')
+        );
+        $this->assertSame($associativeData, $grid1->getAssociativeArray(), $grid2->getAssociativeArray());
+    }
     
     public function testGetLabels()
     {

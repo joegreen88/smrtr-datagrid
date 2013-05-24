@@ -2205,17 +2205,30 @@ class Smrtr_DataGrid
     }
     
     /**
-     * Import data from array
+     * Import data from array (completely overwrites current grid data)
      * 
      * @api
      * @param array $data
+     * @param boolean $associateRowLabels (optional) use array's row keys for grid's row labels
+     * @param boolean $useFirstRowAsColumnLabels (optional) use array's first row as grid's column labels
      * @return \Smrtr_DataGrid $this
+     * @uses Smrtr_DataGrid::appendKeys()
      * @uses Smrtr_DataGrid::_importMatrix()
      * @uses Smrtr_DataGrid::padKeys()
      */
-    public function loadArray( $data )
+    public function loadArray( $data, $associateRowLabels=false, $useFirstRowAsColumnLabels=false )
     {
-        $this->_importMatrix($data);
+        $this->rows = 0;
+        $this->columns = 0;
+        $this->rowKeys = array();
+        $this->columnKeys = array();
+        if ($useFirstRowAsColumnLabels && $row = array_shift($data))
+            $this->appendKeys('column', $row);
+        if (!empty($data)) {
+            if ($associateRowLabels)
+                $this->appendKeys('row', array_keys($data));
+            $this->_importMatrix($data);
+        }
         $this->padKeys('row', $this->rows);
         $this->padKeys('column', $this->columns);
         return $this;
@@ -2430,20 +2443,10 @@ class Smrtr_DataGrid
     public function __construct( array $data = array(), $associateRowLabels=false, $useFirstRowAsColumnLabels=false )
     {
         $this->ID = self::$IDcounter++;
-        if (!empty($data)) {
-            if ($useFirstRowAsColumnLabels && $row = array_shift($data))
-                $this->appendKeys('column', $row);
-            if (!empty($data)) {
-                if ($associateRowLabels)
-                    $this->appendKeys('row', array_keys($data));
-                $this->_importMatrix($data);
-            }
-            if (!$useFirstRowAsColumnLabels)
-                $this->appendKeys('column', array_fill(0, $this->columns, null));
-            if (!$associateRowLabels)
-                $this->appendKeys('row', array_fill(0, $this->rows, null));
-        }
         self::$registry[$this->ID] = $this;
+        if (!empty($data)) {
+            $this->loadArray($data, $associateRowLabels, $useFirstRowAsColumnLabels);
+        }
     }
     
     /**
