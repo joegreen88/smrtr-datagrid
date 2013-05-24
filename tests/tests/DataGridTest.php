@@ -15,10 +15,10 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     );
     
     public $labelledData = array(
-        0 => array('col0', 'col1', 'col2'),
-        'row0' => array('0.0', '0.1', '0.2'),
-        'row1' => array('1.0', '1.1', '1.2'),
-        'row2' => array('2.0', '2.1', '2.2')
+                    array('col0', 'col1', 'col2'),
+        'row0' =>   array('0.0', '0.1', '0.2'),
+        'row1' =>   array('1.0', '1.1', '1.2'),
+        'row2' =>   array('2.0', '2.1', '2.2')
     );
     
     public $partialData = array(
@@ -115,39 +115,70 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertSame($val, $res1, $res2, $res3, $res4);
     }
     
-    public function testAppendColumn()
+    public function testAppendColumns()
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         $column = array('0.3', '1.3', '2.3');
         $grid->appendColumn($column, 'col3');
+        $grid->appendColumn($grid->column(3), 'copy');
         $this->assertSame(
             $column, 
-            $grid->column('col3')->data(),
-            $grid->getColumn(3), 
-            $grid->getColumn('col3')
+            $grid->column('col3')->data(), $grid->column(3)->data(),
+            $grid->column('copy')->data(), $grid->column(4)->data(),
+            $grid->getColumn('col3'), $grid->getColumn(3),
+            $grid->getColumn('copy'), $grid->getColumn(4)
         );
     }
     
-    public function testAppendDuplicateRow()
+    public function testAppendRows()
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
-        $grid->appendRow($grid->row('row1'), 'cloned');
-        $this->assertSame($grid->getRow('row1'), $grid->getRow(1), $grid->row(1)->data());
+        $row = array('3.0', '3.1', '3.2');
+        $grid->appendRow($row, 'row3');
+        $grid->appendRow($grid->row('row3'), 'dupe');
+        $this->assertSame(
+            $row,
+            $grid->row('row3')->data(), $grid->row(3)->data(),
+            $grid->row('dupe')->data(), $grid->row(4)->data(),
+            $grid->getRow('row3'), $grid->getRow(3),
+            $grid->getRow('dupe'), $grid->getRow(4)
+        );
+    }
+
+    public function testPrependColumns()
+    {
+        $grid = new Smrtr_DataGrid($this->labelledData, true, true);
+        $column = array('a', 'b', 'c');
+        $grid->prependColumn($column, 'new');
+        $this->assertEquals($grid->getLabel('column', 0), 'new');
+        $grid->prependColumn($grid->column(0), 'copy');
+        $this->assertEquals($grid->getLabel('column', 0), 'copy');
+        $this->assertEquals($grid->getLabel('column', 1), 'new');
+        $this->assertSame(
+            $column, 
+            $grid->column('new')->data(), $grid->column(1)->data(),
+            $grid->column('copy')->data(), $grid->column(0)->data(),
+            $grid->getColumn('new'), $grid->getColumn(1),
+            $grid->getColumn('copy'), $grid->getColumn(0)
+        );
     }
     
-    public function testPrependDuplicateColumn()
+    public function testPrependRows()
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
-        $grid->prependColumn($grid->column(0)->data(), 'duplicate');
-        $this->assertSame($grid->column('col0')->data(), $grid->getColumn('duplicate'));
-    }
-    
-    public function testPrependRow()
-    {
-        $grid = new Smrtr_DataGrid($this->labelledData, true, true);
-        $row = array(1.34234, 6.785, -7.2);
-        $grid->prependRow($row, 'floats');
-        $this->assertSame($row, $grid->row(0)->data(), $grid->getRow(0), $grid->getRow('floats'));
+        $row = array('a', 'b', 'c');
+        $grid->prependRow($row, 'new');
+        $this->assertEquals($grid->getLabel('row', 0), 'new');
+        $grid->prependRow($grid->row(0), 'copy');
+        $this->assertEquals($grid->getLabel('row', 0), 'copy');
+        $this->assertEquals($grid->getLabel('row', 1), 'new');
+        $this->assertSame(
+            $row, 
+            $grid->row('new')->data(), $grid->row(1)->data(),
+            $grid->row('copy')->data(), $grid->row(0)->data(),
+            $grid->getRow('new'), $grid->getRow(1),
+            $grid->getRow('copy'), $grid->getRow(0)
+        );
     }
     
     public function testSwapUnstickyRows()
@@ -309,14 +340,15 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertTrue($cond);
     }
     
-    public function testSearchRows()
+    public function testSearch()
     {
         $Grid = new Smrtr_DataGrid();
         $Grid->loadCSV($this->_inputPath.'/directgov_external_search_2012-02-05.csv', true, true);
         $this->assertEquals(84, $Grid->searchRows('term*=job, visits>"10,000"')->info('rowCount'));     // OR
         $this->assertEquals(9, $Grid->searchRows('term*=job + visits>"10,000"')->info('rowCount'));     // AND
-        $this->assertEquals(51, $Grid->searchRows('term*=job - visits>"10,000"')->info('rowCount'));    // NOT
-        $this->assertEquals(13, $Grid->searchRows('(term*=job - visits>"10,000") + (//>100 - //<400)')->info('rowCount'));
+        $Grid->transpose();
+        $this->assertEquals(51, $Grid->searchColumns('term*=job - visits>"10,000"')->info('columnCount'));    // NOT
+        $this->assertEquals(13, $Grid->searchColumns('(term*=job - visits>"10,000") + (//>100 - //<400)')->info('columnCount'));
     }
     
     public function testDeleteEmptyColumnsAndRows()
@@ -363,20 +395,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $row3 = ($Grid->getRowCounts(3) === array(2=>2, 1=>1, 5=>1, 3=>1));
         $row4 = ($Grid->getRowCounts(4) === array(5=>1, 1=>2, ''=>2));
         $this->assertTrue($row0 && $row1 && $row2 && $row3 && $row4);
-        // @todo: getColumnCounts(verbose), getRowCounts, getRowCounts(verbose)
-    }
-
-    public function testGetVerboseCounts()
-    {
-        // public $numberData =array(
-        //     array(1, 2, 3, 4, 5),
-        //     array(5, 4, 3, 2, 1),
-        //     array(4, 4, 3, 2),
-        //     array(2, 1, 5, 3, 2),
-        //     array(5, 1, 1)
-        // );
-        $Grid = new Smrtr_DataGrid($this->numberData);
-        // getColumnCounts
+        // verbose getColumnCounts
         $col0 = ($Grid->getColumnCounts(0, true) === array( 
             array(1, 1), array(5, 2), array(4, 1), array(2, 1), array(5, 2)
         ));
@@ -393,7 +412,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
             array(5, 1), array(1, 1), array('', 2), array(2, 1), array('', 2)
         ));
         $this->assertTrue($col0 &&$col1 && $col2 && $col3 && $col4);
-        // getRowCounts
+        // verbose getRowCounts
         $row0 = ($Grid->getRowCounts(0, true) === array( 
             array(1, 1), array(2, 1), array(3, 1), array(4, 1), array(5, 1)
         ));
