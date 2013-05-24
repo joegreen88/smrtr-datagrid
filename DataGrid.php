@@ -1289,7 +1289,7 @@ class Smrtr_DataGrid
     public function emptyRow( $keyOrLabel )
     {
         $key = $this->getKey('row', $keyOrLabel);
-        $this->data[$key] = $this->normalizeVector(array(), $this->columns);
+        $this->data[$key] = $this->_normalizeVector(array(), $this->columns);
         return $this;
     }
     
