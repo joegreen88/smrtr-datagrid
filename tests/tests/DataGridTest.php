@@ -36,7 +36,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         array(5, 1, 1)
     );
 
-    public function testLoadArrays()
+    public function testLoadArray()
     {
         // non-associative array
         $grid1 = new Smrtr_DataGrid($this->simpleData);
@@ -56,24 +56,40 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertSame($associativeData, $grid1->getAssociativeArray(), $grid2->getAssociativeArray());
     }
     
-    public function testGetLabels()
+    public function testGetKeysAndGetLabels()
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         $expColKeys = array('col0', 'col1', 'col2');
         $expRowKeys = array('row0', 'row1', 'row2');
-        $this->assertEquals($expColKeys, $grid->columnLabels());
-        $this->assertEquals($expRowKeys, $grid->rowLabels());
-        
+        // Keys
+        $this->assertSame(range(0, 2), $grid->getRowKeys(), $grid->getColumnKeys());
+        $this->assertSame(1, $grid->getRowKey('row1'), $grid->getColumnKey('col1'));
+        // Labels
+        $this->assertSame($expColKeys, $grid->rowLabels(), $grid->getRowLabels(), $grid->columnLabels(), $grid->getColumnLabels());
+        $this->assertSame('row1', $grid->getRowLabel(1));
+        $this->assertSame('col1', $grid->getColumnLabel(1));
     }
     
     public function testSetLabels()
     {
-        $keys = array('one', 'two', 'three');
+        $columnLabels = array('col0', 'col1', 'col2');
+        $rowLabels = array('row0', 'row1', 'row2');
         $grid = new Smrtr_DataGrid($this->simpleData);
-        $grid->rowLabels($keys);
-        $grid->columnLabels($keys);
-        $this->assertEquals($keys, $grid->columnLabels());
-        $this->assertEquals($keys, $grid->rowLabels());
+        $grid->rowLabels($rowLabels);
+        $grid->columnLabels($columnLabels);
+        $this->assertEquals($rowLabels, $grid->rowLabels());
+        $this->assertEquals($columnLabels, $grid->columnLabels());
+    }
+
+    public function testHasKeyAndHasLabel()
+    {
+        $grid = new Smrtr_DataGrid($this->labelledData, true, true);
+        // Keys
+        $this->assertTrue($grid->hasRowKey(2) && $grid->hasColumnKey(0));
+        $this->assertTrue($grid->hasRowKey(4) || $grid->hasColumnKey(4));
+        // Labels
+        $this->assertTrue($grid->hasRowLabel('row0') && $grid->hasColumnLabel('col2'));
+        $this->assertFalse($grid->hasRowLabel('noMatch') || $grid->hasColumnLabel('noMatch'));
     }
     
     public function testGetPoints()
@@ -369,6 +385,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $Grid->transpose();
         $this->assertEquals(51, $Grid->searchColumns('term*=job - visits>"10,000"')->info('columnCount'));    // NOT
         $this->assertEquals(13, $Grid->searchColumns('(term*=job - visits>"10,000") + (//>100 - //<400)')->info('columnCount'));
+
     }
     
     public function testDeleteEmptyColumnsAndRows()
