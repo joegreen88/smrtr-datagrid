@@ -65,7 +65,8 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertSame(range(0, 2), $grid->getRowKeys(), $grid->getColumnKeys());
         $this->assertSame(1, $grid->getRowKey('row1'), $grid->getColumnKey('col1'));
         // Labels
-        $this->assertSame($expColKeys, $grid->rowLabels(), $grid->getRowLabels(), $grid->columnLabels(), $grid->getColumnLabels());
+        $this->assertSame($expRowKeys, $grid->rowLabels(), $grid->getRowLabels());
+        $this->assertSame($expColKeys, $grid->columnLabels(), $grid->getColumnLabels());
         $this->assertSame('row1', $grid->getRowLabel(1));
         $this->assertSame('col1', $grid->getColumnLabel(1));
     }
@@ -77,8 +78,8 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $grid = new Smrtr_DataGrid($this->simpleData);
         $grid->rowLabels($rowLabels);
         $grid->columnLabels($columnLabels);
-        $this->assertEquals($rowLabels, $grid->rowLabels());
-        $this->assertEquals($columnLabels, $grid->columnLabels());
+        $this->assertSame($rowLabels, $grid->rowLabels());
+        $this->assertSame($columnLabels, $grid->columnLabels());
     }
 
     public function testHasKeyAndHasLabel()
