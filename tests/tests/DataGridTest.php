@@ -348,13 +348,6 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     
     public function testGetCounts()
     {
-        // public $numberData =array(
-        //     array(1, 2, 3, 4, 5),
-        //     array(5, 4, 3, 2, 1),
-        //     array(4, 4, 3, 2),
-        //     array(2, 1, 5, 3, 2),
-        //     array(5, 1, 1)
-        // );
         $Grid = new Smrtr_DataGrid($this->numberData);
         // getColumnCounts
         $col0 = ($Grid->getColumnCounts(0) === array(1=>1, 5=>2, 4=>1, 2=>1));
@@ -371,5 +364,51 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $row4 = ($Grid->getRowCounts(4) === array(5=>1, 1=>2, ''=>2));
         $this->assertTrue($row0 && $row1 && $row2 && $row3 && $row4);
         // @todo: getColumnCounts(verbose), getRowCounts, getRowCounts(verbose)
+    }
+
+    public function testGetVerboseCounts()
+    {
+        // public $numberData =array(
+        //     array(1, 2, 3, 4, 5),
+        //     array(5, 4, 3, 2, 1),
+        //     array(4, 4, 3, 2),
+        //     array(2, 1, 5, 3, 2),
+        //     array(5, 1, 1)
+        // );
+        $Grid = new Smrtr_DataGrid($this->numberData);
+        // getColumnCounts
+        $col0 = ($Grid->getColumnCounts(0, true) === array( 
+            array(1, 1), array(5, 2), array(4, 1), array(2, 1), array(5, 2)
+        ));
+        $col1 = ($Grid->getColumnCounts(1, true) === array( 
+            array(2, 1), array(4, 2), array(4, 2), array(1, 2), array(1, 2)
+        ));
+        $col2 = ($Grid->getColumnCounts(2, true) === array( 
+            array(3, 3), array(3, 3), array(3, 3), array(5, 1), array(1, 1)
+        ));
+        $col3 = ($Grid->getColumnCounts(3, true) === array( 
+            array(4, 1), array(2, 2), array(2, 2), array(3, 1), array('', 1)
+        ));
+        $col4 = ($Grid->getColumnCounts(4, true) === array( 
+            array(5, 1), array(1, 1), array('', 2), array(2, 1), array('', 2)
+        ));
+        $this->assertTrue($col0 &&$col1 && $col2 && $col3 && $col4);
+        // getRowCounts
+        $row0 = ($Grid->getRowCounts(0, true) === array( 
+            array(1, 1), array(2, 1), array(3, 1), array(4, 1), array(5, 1)
+        ));
+        $row1 = ($Grid->getRowCounts(1, true) === array( 
+            array(5, 1), array(4, 1), array(3, 1), array(2, 1), array(1, 1)
+        ));
+        $row2 = ($Grid->getRowCounts(2, true) === array( 
+            array(4, 2), array(4, 2), array(3, 1), array(2, 1), array('', 1)
+        ));
+        $row3 = ($Grid->getRowCounts(3, true) === array( 
+            array(2, 2), array(1, 1), array(5, 1), array(3, 1), array(2, 2)
+        ));
+        $row4 = ($Grid->getRowCounts(4, true) === array( 
+            array(5, 1), array(1, 2), array(1, 2), array('', 2), array('', 2)
+        ));
+        $this->assertTrue($row0 && $row1 && $row2 && $row3 && $row4);
     }
 }
