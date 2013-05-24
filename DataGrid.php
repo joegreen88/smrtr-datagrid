@@ -1,4 +1,5 @@
-<?php class Smrtr_DataGrid_Exception extends Exception {}
+<?php 
+class Smrtr_DataGrid_Exception extends Exception {}
 require_once('DataGridVector.php');
 
 /**
@@ -962,7 +963,7 @@ class Smrtr_DataGrid
     public function getLabel( $rowOrColumn, $key )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGridException("'column' or 'row' expected");
+            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
         if (!is_int($key))
             throw new Smrtr_DataGrid_Exception("int \$key expected");
         if (array_key_exists($key, $this->{$rowOrColumn.'Keys'}))
@@ -993,7 +994,7 @@ class Smrtr_DataGrid
      */
     public function getColumnLabel( $key )
     {
-        return $this->getLabel('columnw', $key);
+        return $this->getLabel('column', $key);
     }
     
     /**
