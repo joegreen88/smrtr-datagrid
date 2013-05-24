@@ -379,7 +379,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
             $grid2->getRow('row0') == $grid2->getRow(0)
         );
         $this->assertTrue($cond);
-        $grid1=>moveRow('row2', 'row0');
+        $grid1->moveRow('row2', 'row0');
         $this->assertTrue($this->isValid($grid1));
         $this->assertSame($this->simpleData, $grid1->getArray(), $grid2->getArray());
         $this->assertSame(array('row0', 'row1', 'row2'), $grid1->getRowLabels(), $grid2->getRowLabels());
