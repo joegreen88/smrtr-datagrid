@@ -267,7 +267,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         $grid->deleteRow('row2');
-        $this->assertSame(2, count($grid->getColumn(0)), count($this->getRowKeys()), $grid->info('rowCount'));
+        $this->assertSame(2, count($grid->getColumn(0)), count($grid->getRowKeys()), $grid->info('rowCount'));
         $this->deleteRow(0);
         $this->assertSame(1, count($grid->getColumn(0)), count($grid->getRowKeys()), $grid->info('rowCount'));
         $this->assertSame(array('row1'), $grid->getRowLabels());
