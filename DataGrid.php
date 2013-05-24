@@ -1094,7 +1094,7 @@ class Smrtr_DataGrid
      */
     public function hasRowLabel( $label )
     {
-        return $this->hasKey('row', $label);
+        return $this->hasLabel('row', $label);
     }
     
     /**
