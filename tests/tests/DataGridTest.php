@@ -379,9 +379,6 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
             $grid2->getRow('row0') == $grid2->getRow(0)
         );
         $this->assertTrue($cond);
-        $grid1->moveRow('row2', 'row0');
-        $this->assertTrue($this->isValid($grid1));
-        $this->assertSame(array('row0', 'row1', 'row2'), $grid1->getRowLabels(), $grid2->getRowLabels());
     }
     
     public function testMoveUnstickyRow()
@@ -412,9 +409,6 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
             $grid2->getColumn('col2') == $grid2->getColumn(2)
         );
         $this->assertTrue($cond);
-        $grid1->moveColumn('col2', 'col0');
-        $this->assertTrue($this->isValid($grid1));
-        $this->assertSame(array('col0', 'col1', 'col2'), $grid1->getColumnLabels(), $grid2->getColumnLabels());
     }
     
     public function testMoveUnstickyColumn()
