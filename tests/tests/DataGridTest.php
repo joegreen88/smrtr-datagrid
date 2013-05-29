@@ -309,8 +309,9 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     {
         $grid = new Smrtr_DataGrid($this->labelledData, true, true);
         $grid->orderRows('col0', 'desc', false);
-        $result = array(array('2.0', '1.0', '0.0'),array('1.0', '1.1', '0.1'),array('0.0','1.2','0.2'));
+        $result = array(array('2.0', '2.1', '2.2'),array('1.0', '1.1', '1.2'),array('0.0','0.1','0.2'));
         $this->assertSame($result, $grid->getArray());
+        $this->assertSame(array('col0','col1','col2'), $grid->columnLabels());
         $grid->orderRows(0, 'asc', true);
         $labelsResult = array('row2','row1','row0');
         $this->assertSame($this->simpleData, $grid->getArray());
