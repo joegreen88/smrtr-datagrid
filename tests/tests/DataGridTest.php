@@ -299,10 +299,10 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $result = array(array('0.2','0.1','0.0'),array('1.2','1.1','1.0'),array('2.2','2.1','2.0'));
         $labelsResult = array('col2', 'col1', 'col0');
         $this->assertSame($result, $grid->getArray());
-        $this->assertSame($labelsResult, $this->columnLabels());
+        $this->assertSame($labelsResult, $grid->columnLabels());
         $grid->orderColumns(1, 'asc', false);
         $this->assertSame($this->simpleData, $grid->getArray());
-        $this->assertSame($labelsResult, $this->columnLabels());
+        $this->assertSame($labelsResult, $grid->columnLabels());
     }
 
     public function testOrderRows()
@@ -496,6 +496,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $Grid->transpose();
         $this->assertEquals(51, $Grid->searchColumns('term*=job - visits>"10,000"')->info('columnCount'));    // NOT
         $this->assertEquals(13, $Grid->searchColumns('(term*=job - visits>"10,000") + (//>100 - //<400)')->info('columnCount'));
+        $this->assertEquals(1, $Grid->searchColumns('//<=20 + visits>=50000 + term^=job + visits$=559')->info('columnCount'));
     }
     
     public function testDeleteEmptyColumnsAndRows()
