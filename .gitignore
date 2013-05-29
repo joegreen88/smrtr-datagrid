@@ -2,3 +2,6 @@ tags
 /docs
 /docs/*
 /docs/**
+/tests/output
+/tests/output/*
+/tests/output/**
