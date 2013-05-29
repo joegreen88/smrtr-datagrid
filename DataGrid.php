@@ -1463,8 +1463,7 @@ class Smrtr_DataGrid
         }
         $searchKey = $this->getKey('column', $byColumnKeyOrLabel);
         $stack = array(); $keyStack = array();
-        $self = $this;
-        $this->eachRow( function($i, $label, $row) use(&$stack, &$keyStack, $searchKey, $self)
+        $this->eachRow( function($i, $label, $row) use(&$stack, &$keyStack, $searchKey)
         {
             $val = $row[$searchKey];
             if (!array_key_exists($val, $stack))
@@ -1473,7 +1472,7 @@ class Smrtr_DataGrid
                 $keyStack[$val] = array();
             }
             $stack[$val][] = $row;
-            $keyStack[$val][] = $self->getLabel('row', $i);
+            $keyStack[$val][] = $label;
         });
         $sortFunction($stack);
         $sortFunction($keyStack);
@@ -1987,8 +1986,7 @@ class Smrtr_DataGrid
         }        
         $searchKey = $this->getKey('row', $byRowKeyOrLabel);
         $stack = array(); $keyStack = array();
-        $self = $this;
-        $this->eachColumn( function($i, $label, $column) use(&$stack, &$keyStack, $searchKey, $self)
+        $this->eachColumn( function($i, $label, $column) use(&$stack, &$keyStack, $searchKey)
         {
             $val = $column[$searchKey];
             if (!array_key_exists($val, $stack))
@@ -1997,7 +1995,7 @@ class Smrtr_DataGrid
                 $keyStack[$val] = array();
             }
             $stack[$val][] = $column;
-            $keyStack[$val][] = $self->getLabel('column', $i);
+            $keyStack[$val][] = $label;
         });
         $sortFunction($stack);
         $sortFunction($keyStack);
