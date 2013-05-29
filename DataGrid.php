@@ -339,7 +339,7 @@ class Smrtr_DataGrid
         if (preg_match('/^"(.*?[^\\\])"(.*)/', $str, $matches)) // quoted (complex) string
         {
             $fields = array();
-            $fields[] = $matches[1];
+            $fields[] = str_replace('\"', '"', $matches[1]);
             $str = $matches[2];
             $fields = array_merge($fields, (array)$this->extractSearchField($str));
             return count($fields) == 1 ? $fields[0] : $fields;
@@ -573,7 +573,6 @@ class Smrtr_DataGrid
      * emptyKey | emptyLabel *
      * swapKeys | swapLabels *
      * moveKey | moveLabels *
-     * trimKeys
      * padKeys
      * getKey *
      * getKeys *
@@ -803,9 +802,7 @@ class Smrtr_DataGrid
         if (!in_array($rowOrColumn, array('column', 'row')))
             throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
         if ($stickyData)
-            $this->{'move'.ucfirst($rowOrColumn)}(
-                $rowOrColumn, $to_KeyOrLabel, $from_KeyOrLabel, false
-            );
+            $this->{'move'.ucfirst($rowOrColumn)}($rowOrColumn, $to_KeyOrLabel, $from_KeyOrLabel, false);
             
         $keyTo = $this->getKey($rowOrColumn, $to_KeyOrLabel);        
         $keyFrom = $this->getKey($rowOrColumn, $from_KeyOrLabel);
@@ -828,21 +825,6 @@ class Smrtr_DataGrid
             }
             
         $this->updateKey($rowOrColumn, $keyTo, $Label);
-        return $this;
-    }
-    
-    /**
-     * @internal
-     */
-    public function trimKeys( $rowOrColumn, $length )
-    {
-        if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
-        if (!is_int($length) || $length < 0)
-            throw new Smrtr_DataGrid_Exception("positive int \$length expected");
-        $this->{$rowOrColumn.'Keys'} = array_slice(
-            $this->{$rowOrColumn.'Keys'}, 0, $length
-        );
         return $this;
     }
     
