@@ -1,5 +1,6 @@
 <?php 
-class Smrtr_DataGrid_Exception extends Exception {}
+namespace Smrtr;
+class DataGridException extends \Exception {}
 require_once('DataGridVector.php');
 
 /**
@@ -9,13 +10,21 @@ require_once('DataGridVector.php');
  * We currently provide methods for CSV and JSON.
  * Handles custom keys (a.k.a. labels) on rows and columns.
  * 
+ * New in version 1.3.0:
+ *  - Namespaced
+ *  - Moved to 3 tiered versioning (1.3.0)
+ *  - Method hasValue()
+ *  - Method rowHasValue()
+ *  - Method columnHasValue()
+ *  - Improved loadArray() behaviour, with flags
+ * 
  * @author Joe Green
  * @package SmrtrLib
- * @version 1.2
- * @todo XML import/export and methods
+ * @version 1.3.0
+ * @todo Pivot tables
  */
 
-class Smrtr_DataGrid
+class DataGrid
 {
     
     // Factory
@@ -124,7 +133,7 @@ class Smrtr_DataGrid
      */
     private static function isAssociative($token, $type)
     {
-        if (!self::isSetOperator($token)) throw new Smrtr_DataGrid_Exception("Invalid token: $token");
+        if (!self::isSetOperator($token)) throw new DataGridException("Invalid token: $token");
         if ($type === self::$setOperators[$token][1]) return true;
         return false;
     }
@@ -135,7 +144,7 @@ class Smrtr_DataGrid
     private static function compareSetOperatorPrecedence($tokenA, $tokenB)
     {
         if (!self::isSetOperator($tokenA) || !self::isSetOperator($tokenB))
-            throw new Smrtr_DataGrid_Exception("Invalid tokens: $tokenA & $tokenB");
+            throw new DataGridException("Invalid tokens: $tokenA & $tokenB");
         return (self::$setOperators[$tokenA][0] - self::$setOperators[$tokenB][0]);
     }
     
@@ -289,7 +298,7 @@ class Smrtr_DataGrid
                 {
                     $curDepth--;
                     if ($curDepth < 0)
-                        throw new Smrtr_DataGrid_Exception("Unmatched closing bracket detected");
+                        throw new DataGridException("Unmatched closing bracket detected");
                     $substr = trim($substr);
                     if (strlen($substr))
                         array_push($out, $substr);
@@ -309,7 +318,7 @@ class Smrtr_DataGrid
             $resetSubstr = false;
         }
         if ($curDepth > 0)
-            throw new Smrtr_DataGrid_Exception("Unmatched opening bracket detected");
+            throw new DataGridException("Unmatched opening bracket detected");
         $substr = trim($substr);
         if (strlen($substr))
             array_push($out, $substr);
@@ -322,7 +331,7 @@ class Smrtr_DataGrid
     private function extractSearchExpression( $str )
     {
         if (!is_string($str) || !strlen($str))
-            throw new Smrtr_DataGrid_Exception("Non-empty string expected");
+            throw new DataGridException("Non-empty string expected");
         $fields = (array) $this->extractSearchField($str);
         $operation = $this->extractSearchOperation($str, self::selectorChars());
         $values = (array) $this->extractSearchValue($str);
@@ -443,12 +452,12 @@ class Smrtr_DataGrid
      */
     public function search( $str, $rowOrColumn )
     {
-        if (!is_string($str)) throw new Smrtr_DataGrid_Exception("String expected");
+        if (!is_string($str)) throw new DataGridException("String expected");
         if (!strlen($str)) return $this;
         if (!in_array($rowOrColumn, array('row','column')))
-            throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
+            throw new DataGridException("'row' or 'column' expected");
         $tokens = self::infixToRPN(self::extractSearchTokens($str));
-        $Grid = new Smrtr_DataGrid();
+        $Grid = new DataGrid();
         if ($rowOrColumn == 'row') {
             $count = $this->rows;
             $labels = $this->getRowLabels();
@@ -509,12 +518,12 @@ class Smrtr_DataGrid
         if (is_bool($v)) return $v;
         if ('row' == $rowOrColumn) $rowOrColumnInverse = 'column';
         elseif ('column' == $rowOrColumn) $rowOrColumnInverse = 'row';
-        else throw new Smrtr_DataGrid_Exception("'row' or 'column' expected");
+        else throw new DataGridException("'row' or 'column' expected");
         $selector = $this->extractSearchExpression($selector);
         $selectorMaps = self::selectors();
         list($fields, $operator, $values) = $selector;
         if (empty($operator) || !array_key_exists($operator, $selectorMaps))
-            throw new Smrtr_DataGrid_Exception("Invalid selector provided");
+            throw new DataGridException("Invalid selector provided");
         $matchingFunction = $selectorMaps[$operator];
         $match = false;
         foreach ($fields as $field)
@@ -536,11 +545,11 @@ class Smrtr_DataGrid
     
     /**
      * Perform a search query on the grid's rows.
-     * Returns results as a new Smrtr_DataGrid without modifying $this.
+     * Returns results as a new DataGrid without modifying $this.
      * 
      * @param string $s query string
-     * @return \Smrtr_DataGrid
-     * @throws Smrtr_DataGrid_Exception
+     * @return \DataGrid
+     * @throws DataGridException
      */
     public function searchRows( $s )
     {
@@ -549,11 +558,11 @@ class Smrtr_DataGrid
     
     /**
      * Perform a search query on the grid's columns.
-     * Returns results as a new Smrtr_DataGrid without modifying $this.
+     * Returns results as a new DataGrid without modifying $this.
      * 
      * @param string $s query string
-     * @return \Smrtr_DataGrid
-     * @throws Smrtr_DataGrid_Exception
+     * @return \DataGrid
+     * @throws DataGridException
      */
     public function searchColumns( $s )
     {
@@ -589,16 +598,16 @@ class Smrtr_DataGrid
     public function appendKey( $rowOrColumn, $label=null, $increaseCount=false )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if (is_string($label))
         {
             if (!strlen($label))
                 $label = null;
             if (in_array($label, $this->{$rowOrColumn.'Keys'}))
-                throw new Smrtr_DataGrid_Exception($rowOrColumn."Key '$label' already exists");
+                throw new DataGridException($rowOrColumn."Key '$label' already exists");
         }
         elseif (!is_null($label))
-            throw new Smrtr_DataGrid_Exception("non-empty string \$label or null expected");
+            throw new DataGridException("non-empty string \$label or null expected");
         array_push($this->{$rowOrColumn.'Keys'}, $label);
         if ($increaseCount)
             $this->{$rowOrColumn.'s'}++;
@@ -621,22 +630,22 @@ class Smrtr_DataGrid
      * @param string $rowOrColumn 'row' or 'column'
      * @param int $key
      * @param string|null $label
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception 
+     * @return \DataGrid $this
+     * @throws DataGridException 
      */
     public function updateKey( $rowOrColumn, $key, $label=null )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if (!is_int($key) || !array_key_exists($key, $this->{$rowOrColumn.'Keys'}))
-            throw new Smrtr_DataGrid_Exception("key not found");
+            throw new DataGridException("key not found");
         if (is_string($label) && strlen($label))
         {
             if (in_array($label, $this->{$rowOrColumn.'Keys'}))
-                throw new Smrtr_DataGrid_Exception($rowOrColumn."Key '$label' already exists");
+                throw new DataGridException($rowOrColumn."Key '$label' already exists");
         }
         elseif (!is_null($label))
-            throw new Smrtr_DataGrid_Exception("non-empty string \$label or null expected");
+            throw new DataGridException("non-empty string \$label or null expected");
         $this->{$rowOrColumn.'Keys'}[$key] = $label;
         return $this;
     }
@@ -648,8 +657,8 @@ class Smrtr_DataGrid
      * @param string $rowOrColumn 'row' or 'column'
      * @param int $key
      * @param string|null $label
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception 
+     * @return \DataGrid $this
+     * @throws DataGridException 
      */
     public function updateLabel( $rowOrColumn, $key, $label=null )
     {
@@ -661,8 +670,8 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param array|false $labels [optional]
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
+     * @return \DataGrid $this
+     * @throws DataGridException
      */
     public function rowLabels( $labels=false )
     {
@@ -671,12 +680,12 @@ class Smrtr_DataGrid
         elseif (is_array($labels))
         {
             if ($this->rows == 0)
-                throw new Smrtr_DataGrid_Exception("Cannot assign labels to empty DataGrid");
+                throw new DataGridException("Cannot assign labels to empty DataGrid");
             $rowKeys = $this->_normalizeKeys($labels, $this->rows);
             $this->rowKeys = $rowKeys;
             return $this;
         }
-        throw new Smrtr_DataGrid_Exception("\$labels Array or false|void expected");
+        throw new DataGridException("\$labels Array or false|void expected");
     }
     
     /**
@@ -684,8 +693,8 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param array|false $labels [optional]
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception 
+     * @return \DataGrid $this
+     * @throws DataGridException 
      */
     public function columnLabels( $labels=false )
     {
@@ -694,12 +703,12 @@ class Smrtr_DataGrid
         elseif (is_array($labels))
         {
             if ($this->columns == 0)
-                throw new Smrtr_DataGrid_Exception("Cannot assign labels to empty DataGrid");
+                throw new DataGridException("Cannot assign labels to empty DataGrid");
             $columnKeys = $this->_normalizeKeys($labels, $this->columns);
             $this->columnKeys = $columnKeys;
             return $this;
         }
-        throw new Smrtr_DataGrid_Exception("\$labels Array or false|void expected");
+        throw new DataGridException("\$labels Array or false|void expected");
     }
     
     /**
@@ -708,14 +717,14 @@ class Smrtr_DataGrid
     public function prependKey( $rowOrColumn, $label=null )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if (is_string($label) && strlen($label))
         {
             if (in_array($label, $this->{$rowOrColumn.'Keys'}))
-                throw new Smrtr_DataGrid_Exception($rowOrColumn."Key '$label' already exists");
+                throw new DataGridException($rowOrColumn."Key '$label' already exists");
         }
         elseif (!is_null($label))
-            throw new Smrtr_DataGrid_Exception("non-empty string \$label or null expected");
+            throw new DataGridException("non-empty string \$label or null expected");
         array_unshift($this->{$rowOrColumn.'Keys'}, $label);
         return $this;
     }
@@ -726,7 +735,7 @@ class Smrtr_DataGrid
     public function deleteLastKey( $rowOrColumn )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         $key = $this->{$rowOrColumn.'s'} - 1;
         unset($this->{$rowOrColumn.'Keys'}[$key]);
         return $this;
@@ -738,14 +747,14 @@ class Smrtr_DataGrid
      * @api
      * @param string $rowOrColumn 'row' or 'column'
      * @param int|string $keyOrLabel
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getKey()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::getKey()
      */
     public function emptyKey( $rowOrColumn, $keyOrLabel )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         $key = $this->getKey($rowOrColumn, $keyOrLabel);
         $this->{$rowOrColumn.'Keys'}[$key] = null;
         return $this;
@@ -759,17 +768,17 @@ class Smrtr_DataGrid
      * @param int|string $keyOrLabel1
      * @param int|string $keyOrLabel2
      * @param boolean $stickyData [optional] true by default. swap rows/columns with keys.
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::getLabel()
-     * @uses Smrtr_DataGrid::emptyKey()
-     * @uses Smrtr_DataGrid::updateKey()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::getLabel()
+     * @uses DataGrid::emptyKey()
+     * @uses DataGrid::updateKey()
      */
     public function swapKeys( $rowOrColumn, $keyOrLabel1, $keyOrLabel2, $stickyData=true )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if ($stickyData)
             $this->{'swap'.ucfirst($rowOrColumn)}('row', $keyOrLabel1, $keyOrLabel2, false);
         $Key1 = $this->getKey($rowOrColumn, $keyOrLabel1);
@@ -790,17 +799,17 @@ class Smrtr_DataGrid
      * @param int|string $from_KeyOrLabel
      * @param int|string $to_KeyOrLabel
      * @param boolean $stickyData [optional] true by default. move row/column with key.
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::getLabel()
-     * @uses Smrtr_DataGrid::emptyKey()
-     * @uses Smrtr_DataGrid::updateKey()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::getLabel()
+     * @uses DataGrid::emptyKey()
+     * @uses DataGrid::updateKey()
      */
     public function moveKey( $rowOrColumn, $from_KeyOrLabel, $to_KeyOrLabel, $stickyData=true )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if ($stickyData)
             $this->{'move'.ucfirst($rowOrColumn)}($rowOrColumn, $to_KeyOrLabel, $from_KeyOrLabel, false);
             
@@ -834,9 +843,9 @@ class Smrtr_DataGrid
     public function padKeys( $rowOrColumn, $length )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if (!is_int($length) || $length < 0)
-            throw new Smrtr_DataGrid_Exception("positive int \$length expected");
+            throw new DataGridException("positive int \$length expected");
         if (count($this->{$rowOrColumn.'Keys'}) < $length)
             $this->{$rowOrColumn.'Keys'} = array_pad(
                 $this->{$rowOrColumn.'Keys'}, $length, null
@@ -851,27 +860,27 @@ class Smrtr_DataGrid
      * @param string $rowOrColumn 'row' or 'column'
      * @param int|string $keyOrLabel
      * @return int
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function getKey( $rowOrColumn, $keyOrLabel )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if (is_string($keyOrLabel))
         {
             $offset = array_search($keyOrLabel, $this->{$rowOrColumn.'Keys'});
             if (false !== $offset)
                 return $offset;
-            throw new Smrtr_DataGrid_Exception("Label '$keyOrLabel' not found");
+            throw new DataGridException("Label '$keyOrLabel' not found");
         }
         elseif (is_int($keyOrLabel))
         {
             if (array_key_exists($keyOrLabel, $this->{$rowOrColumn.'Keys'}))
                 return $keyOrLabel;
-            throw new Smrtr_DataGrid_Exception("$rowOrColumn Key $keyOrLabel not found");
+            throw new DataGridException("$rowOrColumn Key $keyOrLabel not found");
         }
         else
-            throw new Smrtr_DataGrid_Exception("\$keyOrLabel can be int or string only");
+            throw new DataGridException("\$keyOrLabel can be int or string only");
     }
     
     /**
@@ -880,7 +889,7 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @return int
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function getRowKey( $keyOrLabel )
     {
@@ -893,7 +902,7 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @return int
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function getColumnKey( $keyOrLabel )
     {
@@ -909,7 +918,7 @@ class Smrtr_DataGrid
     public function getKeys( $rowOrColumn )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         return array_keys($this->{$rowOrColumn.'Keys'});
     }
     
@@ -940,14 +949,14 @@ class Smrtr_DataGrid
      * @param string $rowOrColumn 'row' or 'column'
      * @param int $key
      * @return string
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function getLabel( $rowOrColumn, $key )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if (!is_int($key))
-            throw new Smrtr_DataGrid_Exception("int \$key expected");
+            throw new DataGridException("int \$key expected");
         if (array_key_exists($key, $this->{$rowOrColumn.'Keys'}))
             return $this->{$rowOrColumn.'Keys'}[$key];
         return false;
@@ -959,7 +968,7 @@ class Smrtr_DataGrid
      * @api
      * @param int $key
      * @return string
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function getRowLabel( $key )
     {
@@ -972,7 +981,7 @@ class Smrtr_DataGrid
      * @api
      * @param int $key
      * @return string
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function getColumnLabel( $key )
     {
@@ -988,7 +997,7 @@ class Smrtr_DataGrid
     public function getLabels( $rowOrColumn )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         return $this->{$rowOrColumn.'Keys'};
     }
     
@@ -1019,14 +1028,14 @@ class Smrtr_DataGrid
      * @param string $rowOrColumn 'row' or 'column'
      * @param int $key
      * @return boolean
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function hasKey( $rowOrColumn, $key )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if (!is_int($key))
-            throw new Smrtr_DataGrid_Exception("int \$key expected");
+            throw new DataGridException("int \$key expected");
         return array_key_exists($key, $this->{$rowOrColumn.'Keys'});
     }
     
@@ -1034,7 +1043,7 @@ class Smrtr_DataGrid
      * @api
      * @param int $key
      * @return boolean
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function hasRowKey( $key )
     {
@@ -1045,7 +1054,7 @@ class Smrtr_DataGrid
      * @api
      * @param int $key
      * @return boolean
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function hasColumnKey( $key )
     {
@@ -1057,14 +1066,14 @@ class Smrtr_DataGrid
      * @param string $rowOrColumn 'row' or 'column'
      * @param string $label
      * @return boolean
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function hasLabel( $rowOrColumn, $label )
     {
         if (!in_array($rowOrColumn, array('column', 'row')))
-            throw new Smrtr_DataGrid_Exception("'column' or 'row' expected");
+            throw new DataGridException("'column' or 'row' expected");
         if (!is_string($label))
-            throw new Smrtr_DataGrid_Exception("string \$label expected");
+            throw new DataGridException("string \$label expected");
         return in_array($label, $this->{$rowOrColumn.'Keys'});
     }
     
@@ -1072,7 +1081,7 @@ class Smrtr_DataGrid
      * @api
      * @param string $label
      * @return boolean
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function hasRowLabel( $label )
     {
@@ -1083,7 +1092,7 @@ class Smrtr_DataGrid
      * @api
      * @param string $label
      * @return boolean
-     * @throws Smrtr_DataGrid_Exception 
+     * @throws DataGridException 
      */
     public function hasColumnLabel( $label )
     {
@@ -1123,17 +1132,17 @@ class Smrtr_DataGrid
      * @param array $row
      * @param string|null $label [optional] string label for the appended row
      * @param boolean $internal @internal
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::appendKey()
-     * @uses Smrtr_DataGrid::_normalizeVector()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::appendKey()
+     * @uses DataGrid::_normalizeVector()
      */
     public function appendRow($row, $label=null, $internal=false)
     {
-        if ($row instanceof Smrtr_DataGridVector)
+        if ($row instanceof DataGridVector)
             $row = $row->data();
         if (!is_array($row))
-            throw new Smrtr_DataGrid_Exception("array expected");
+            throw new DataGridException("array expected");
         
         if (!$internal) $this->appendKey('row', $label);
         $rowVector = $this->_normalizeVector($row, $this->columns);
@@ -1154,17 +1163,17 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @param array $row
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::_normalizeVector()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::_normalizeVector()
      */
     public function updateRow($keyOrLabel, $row)
     {
-        if ($row instanceof Smrtr_DataGridVector)
+        if ($row instanceof DataGridVector)
             $row = $row->data();
         if (!is_array($row))
-            throw new Smrtr_DataGrid_Exception("array expected");
+            throw new DataGridException("array expected");
         
         $key = $this->getKey('row', $keyOrLabel);
         $this->data[$key] = $this->_normalizeVector($row, $this->columns);
@@ -1177,17 +1186,17 @@ class Smrtr_DataGrid
      * @api
      * @param array $row
      * @param string|null $label [optional] string label for the prepended row
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::prependKey()
-     * @uses Smrtr_DataGrid::_normalizeVector()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::prependKey()
+     * @uses DataGrid::_normalizeVector()
      */
     public function prependRow($row, $label=null)
     {
-        if ($row instanceof Smrtr_DataGridVector)
+        if ($row instanceof DataGridVector)
             $row = $row->data();
         if (!is_array($row))
-            throw new Smrtr_DataGrid_Exception("array expected");
+            throw new DataGridException("array expected");
         $this->prependKey('row', $label);
         array_unshift($this->data, $this->_normalizeVector($row, $this->columns));
         $this->rows++;
@@ -1200,7 +1209,7 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @return array
-     * @uses Smrtr_DataGrid::getKey()
+     * @uses DataGrid::getKey()
      */
     public function getRow( $keyOrLabel )
     {
@@ -1214,7 +1223,7 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @return array
-     * @uses Smrtr_DataGrid::getRow()
+     * @uses DataGrid::getRow()
      */
     public function getRowDistinct( $keyOrLabel )
     {
@@ -1264,9 +1273,9 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param int|string $keyOrLabel
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::_normalizeVector()
+     * @return \DataGrid $this
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::_normalizeVector()
      */
     public function emptyRow( $keyOrLabel )
     {
@@ -1280,9 +1289,9 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param int|string $keyOrLabel
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::moveRow()
-     * @uses Smrtr_DataGrid::deleteLastKey()
+     * @return \DataGrid $this
+     * @uses DataGrid::moveRow()
+     * @uses DataGrid::deleteLastKey()
      */
     public function deleteRow( $keyOrLabel )
     {
@@ -1300,9 +1309,9 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $from_KeyOrLabel
      * @param string $to_Label
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::updateKey()
+     * @return \DataGrid $this
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::updateKey()
      */
     public function renameRow( $from_KeyOrLabel, $to_Label )
     {
@@ -1318,11 +1327,11 @@ class Smrtr_DataGrid
      * @param int|string $keyOrLabel1
      * @param int|string $keyOrLabel2
      * @param boolean $stickyLabels [optional] defaults to true. Swap labels with rows.
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::swapKeys() if $stickyLabels
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::getRow()
-     * @uses Smrtr_DataGrid::updateRow()
+     * @return \DataGrid $this
+     * @uses DataGrid::swapKeys() if $stickyLabels
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::getRow()
+     * @uses DataGrid::updateRow()
      */
     public function swapRows($keyOrLabel1, $keyOrLabel2, $stickyLabels=true)
     {
@@ -1343,11 +1352,11 @@ class Smrtr_DataGrid
      * @param int|string $from_KeyOrLabel
      * @param int|string $to_KeyOrLabel
      * @param boolean $stickyLabels [optional] Defaults to true. Move label with row.
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::moveKey() if $stickyLabels
-     * @uses Smrtr_DataGrid::getRow()
-     * @uses Smrtr_DataGrid::updateRow()
+     * @return \DataGrid $this
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::moveKey() if $stickyLabels
+     * @uses DataGrid::getRow()
+     * @uses DataGrid::updateRow()
      */
     public function moveRow( $from_KeyOrLabel, $to_KeyOrLabel, $stickyLabels=true )
     {
@@ -1374,7 +1383,7 @@ class Smrtr_DataGrid
     public function trimRows( $length )
     {
         if (!is_int($length) || $length < 0)
-            throw new Smrtr_DataGrid_Exception("positive int \$length expected");
+            throw new DataGridException("positive int \$length expected");
         $this->data = array_slice(
             $this->data, 0, $length
         );
@@ -1387,8 +1396,8 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @return array
-     * @uses Smrtr_DataGrid::getRow()
-     * @uses Smrtr_DataGrid::deleteRow() 
+     * @uses DataGrid::getRow()
+     * @uses DataGrid::deleteRow() 
      */
     public function takeRow( $keyOrLabel )
     {
@@ -1399,22 +1408,22 @@ class Smrtr_DataGrid
     
     /**
      * Loop through rows and execute a callback function on each row. f(key, label, row)
-     * Row provided to callback as array by default (faster), or optionally as Smrtr_DataGridVector object.
+     * Row provided to callback as array by default (faster), or optionally as DataGridVector object.
      * 
      * The label parameter was added to the callback in version 1.1
      * 
      * @api
      * @param callable $callback
      * @param boolean $returnVectorObject 
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception 
-     * @uses Smrtr_DataGrid::row()
-     * @uses Smrtr_DataGrid::getRow()
+     * @return \DataGrid $this
+     * @throws DataGridException 
+     * @uses DataGrid::row()
+     * @uses DataGrid::getRow()
      */
     public function eachRow( $callback, $returnVectorObject=false )
     {
         if (!is_callable($callback))
-            throw new Smrtr_DataGrid_Exception("\$callback provided is not callable");
+            throw new DataGridException("\$callback provided is not callable");
         foreach ($this->rowKeys as $key => $label)
         {
             $row = $returnVectorObject ? $this->row($key) : $this->getRow($key);
@@ -1429,11 +1438,11 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $byColumnKeyOrLabel
      * @param string $order 'asc' or 'desc'. Defaults to 'asc'
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::getLabel()
-     * @uses Smrtr_DataGrid::rowLabels()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::getLabel()
+     * @uses DataGrid::rowLabels()
      */
     public function orderRows( $byColumnKeyOrLabel, $order='asc', $stickyLabels=true )
     {
@@ -1441,7 +1450,7 @@ class Smrtr_DataGrid
         {
             case 'asc': $sortFunction = 'ksort'; break;
             case 'desc': $sortFunction = 'krsort'; break;
-            default: throw new Smrtr_DataGrid_Exception("\$order of 'asc' or 'desc' expected"); break;
+            default: throw new DataGridException("\$order of 'asc' or 'desc' expected"); break;
         }
         $searchKey = $this->getKey('column', $byColumnKeyOrLabel);
         $stack = array(); $keyStack = array();
@@ -1483,16 +1492,16 @@ class Smrtr_DataGrid
      * @api
      * @param callable $callback Called on each row: $filter($key, $label, $row)
      * @param boolean $returnVectorObject 
-     * @return Smrtr_DataGrid new Smrtr_DataGrid with results
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getRow()
-     * @uses Smrtr_DataGrid::appendRow()
+     * @return DataGrid new DataGrid with results
+     * @throws DataGridException
+     * @uses DataGrid::getRow()
+     * @uses DataGrid::appendRow()
      */
     public function filterRows( $callback, $returnVectorObject=false )
     {
         if (!is_callable($callback))
-            throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
-        $Grid = new Smrtr_DataGrid;
+            throw new DataGridException("\$filter provided is not callable");
+        $Grid = new DataGrid;
         $Grid->appendKeys('column', $this->columnKeys, true);
         foreach ($this->rowKeys as $key => $label)
         {
@@ -1509,10 +1518,10 @@ class Smrtr_DataGrid
      * We merge by appending rows with null or unique labels
      * 
      * @api
-     * @param Smrtr_DataGrid $Grid Grid to merge with this
-     * @return \Smrtr_DataGrid $this
+     * @param DataGrid $Grid Grid to merge with this
+     * @return \DataGrid $this
      */
-    public function mergeRows(Smrtr_DataGrid $Grid)
+    public function mergeRows(DataGrid $Grid)
     {
         $columnLabelsDone = false;
         foreach ($Grid->getLabels('row') as $key => $label)
@@ -1548,10 +1557,10 @@ class Smrtr_DataGrid
      * We remove rows with matching labels
      * 
      * @api
-     * @param Smrtr_DataGrid $Grid Grid to reference against
-     * @return \Smrtr_DataGrid $this
+     * @param DataGrid $Grid Grid to reference against
+     * @return \DataGrid $this
      */
-    public function diffRows(Smrtr_DataGrid $Grid)
+    public function diffRows(DataGrid $Grid)
     {
         $subtractor = 0;
         foreach ($this->getLabels('row') as $key => $label)
@@ -1567,10 +1576,10 @@ class Smrtr_DataGrid
      * We intersect by removing rows with labels unique to this grid
      * 
      * @api
-     * @param Smrtr_DataGrid $Grid Grid to reference against
-     * @return \Smrtr_DataGrid $this
+     * @param DataGrid $Grid Grid to reference against
+     * @return \DataGrid $this
      */
-    public function intersectRows(Smrtr_DataGrid $Grid)
+    public function intersectRows(DataGrid $Grid)
     {
         $subtractor = 0;
         foreach ($this->getLabels('row') as $key => $label)
@@ -1586,7 +1595,7 @@ class Smrtr_DataGrid
      * To overwrite this object just call like so: $grid = $grid->deleteEmptyRows();
      * 
      * @api
-     * @return \Smrtr_DataGrid new Smrtr_DataGrid with results
+     * @return \DataGrid new DataGrid with results
      */
     public function deleteEmptyRows()
     {
@@ -1630,17 +1639,17 @@ class Smrtr_DataGrid
      * @param array $column
      * @param string|null $label [optional] string label for the appended column
      * @param boolean $internal @internal
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::appendKey()
-     * @uses Smrtr_DataGrid::_normalizeVector()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::appendKey()
+     * @uses DataGrid::_normalizeVector()
      */
     public function appendColumn( $column, $label=null, $internal=false )
     {
-        if ($column instanceof Smrtr_DataGridVector)
+        if ($column instanceof DataGridVector)
             $column = $column->data();
         if (!is_array($column))
-            throw new Smrtr_DataGrid_Exception("array expected");
+            throw new DataGridException("array expected");
         
         if (!$internal) $this->appendKey('column', $label);
         $colVector = $this->_normalizeVector($column, $this->rows);
@@ -1666,17 +1675,17 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @param array $column
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::_normalizeVector()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::_normalizeVector()
      */
     public function updateColumn($keyOrLabel, $column)
     {
-        if ($column instanceof Smrtr_DataGridVector)
+        if ($column instanceof DataGridVector)
             $column = $column->data();
         if (!is_array($column))
-            throw new Smrtr_DataGrid_Exception("array expected");
+            throw new DataGridException("array expected");
         $key = $this->getKey('column', $keyOrLabel);
         $colVector = $this->_normalizeVector($column, $this->rows);
         foreach ($this->data as $i => $row)
@@ -1690,17 +1699,17 @@ class Smrtr_DataGrid
      * @api
      * @param array $column
      * @param string|null $label [optional] string label for the prepended column
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::prependKey()
-     * @uses Smrtr_DataGrid::_normalizeVector()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::prependKey()
+     * @uses DataGrid::_normalizeVector()
      */
     public function prependColumn( $column, $label=false )
     {
-        if ($column instanceof Smrtr_DataGridVector)
+        if ($column instanceof DataGridVector)
             $column = $column->data();
         if (!is_array($column))
-            throw new Smrtr_DataGrid_Exception("array expected");
+            throw new DataGridException("array expected");
         $this->prependKey('column', $label);
         $colVector = $this->_normalizeVector($column, $this->rows);
         foreach ($this->data as $i => $row)
@@ -1715,7 +1724,7 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @return array
-     * @uses Smrtr_DataGrid::getKey()
+     * @uses DataGrid::getKey()
      */
     public function getColumn( $keyOrLabel )
     {
@@ -1732,7 +1741,7 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @return array
-     * @uses Smrtr_DataGrid::getColumn()
+     * @uses DataGrid::getColumn()
      */
     public function getColumnDistinct( $keyOrLabel )
     {
@@ -1782,9 +1791,9 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param int|string $keyOrLabel
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::_normalizeVector()
+     * @return \DataGrid $this
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::_normalizeVector()
      */
     public function emptyColumn( $keyOrLabel )
     {
@@ -1799,9 +1808,9 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param int|string $keyOrLabel
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::moveColumn()
-     * @uses Smrtr_DataGrid::deleteLastKey()
+     * @return \DataGrid $this
+     * @uses DataGrid::moveColumn()
+     * @uses DataGrid::deleteLastKey()
      */
     public function deleteColumn( $keyOrLabel )
     {
@@ -1820,9 +1829,9 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $from_KeyOrLabel
      * @param string $to_Label
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::updateKey()
+     * @return \DataGrid $this
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::updateKey()
      */
     public function renameColumn( $from_KeyOrLabel, $to_Label )
     {
@@ -1838,11 +1847,11 @@ class Smrtr_DataGrid
      * @param int|string $keyOrLabel1
      * @param int|string $keyOrLabel2
      * @param boolean $stickyLabels [optional] defaults to true. Swap labels with columns.
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::swapKeys() if $stickyLabels
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::getColumn()
-     * @uses Smrtr_DataGrid::updateColumn()
+     * @return \DataGrid $this
+     * @uses DataGrid::swapKeys() if $stickyLabels
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::getColumn()
+     * @uses DataGrid::updateColumn()
      */
     public function swapColumns($keyOrLabel1, $keyOrLabel2, $stickyLabels=true)
     {
@@ -1863,11 +1872,11 @@ class Smrtr_DataGrid
      * @param int|string $from_KeyOrLabel
      * @param int|string $to_KeyOrLabel
      * @param boolean $stickyLabels [optional] Defaults to true. Move label with column.
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::moveKey() if $stickyLabels
-     * @uses Smrtr_DataGrid::getColumn()
-     * @uses Smrtr_DataGrid::updateColumn()
+     * @return \DataGrid $this
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::moveKey() if $stickyLabels
+     * @uses DataGrid::getColumn()
+     * @uses DataGrid::updateColumn()
      */
     public function moveColumn( $from_KeyOrLabel, $to_KeyOrLabel, $stickyLabels=true )
     {
@@ -1894,7 +1903,7 @@ class Smrtr_DataGrid
     public function trimColumns( $length )
     {
         if (!is_int($length) || $length < 0)
-            throw new Smrtr_DataGrid_Exception("positive int \$length expected");
+            throw new DataGridException("positive int \$length expected");
         if ($length > $this->columns)
             return $this;
         foreach ($this->data as $i => $row)
@@ -1910,8 +1919,8 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $keyOrLabel
      * @return array
-     * @uses Smrtr_DataGrid::getColumn()
-     * @uses Smrtr_DataGrid::deleteColumn() 
+     * @uses DataGrid::getColumn()
+     * @uses DataGrid::deleteColumn() 
      */
     public function takeColumn( $keyOrLabel )
     {
@@ -1922,22 +1931,22 @@ class Smrtr_DataGrid
     
     /**
      * Loop through columns and execute a callback function on each column. f(key, columndata)
-     * Column provided to callback as array by default (faster), or optionally as Smrtr_DataGridVector object.
+     * Column provided to callback as array by default (faster), or optionally as DataGridVector object.
      * 
      * The label parameter was added to the callback in version 1.1
      * 
      * @api
      * @param callable $callback
      * @param boolean $returnVectorObject 
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception 
-     * @uses Smrtr_DataGrid::column()
-     * @uses Smrtr_DataGrid::getColumn()
+     * @return \DataGrid $this
+     * @throws DataGridException 
+     * @uses DataGrid::column()
+     * @uses DataGrid::getColumn()
      */
     public function eachColumn( $callback, $returnVectorObject=false )
     {
         if (!is_callable($callback))
-            throw new Smrtr_DataGrid_Exception("\$callback provided is not callable");
+            throw new DataGridException("\$callback provided is not callable");
         foreach ($this->columnKeys as $key => $label)
         {
             $column = $returnVectorObject ? $this->column($key) : $this->getColumn($key);
@@ -1952,11 +1961,11 @@ class Smrtr_DataGrid
      * @api
      * @param int|string $byRowKeyOrLabel
      * @param string $order 'asc' or 'desc'. Defaults to 'asc'
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::getLabel()
-     * @uses Smrtr_DataGrid::columnLabels()
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::getLabel()
+     * @uses DataGrid::columnLabels()
      */
     public function orderColumns( $byRowKeyOrLabel, $order='asc', $stickyLabels=true )
     {
@@ -1964,7 +1973,7 @@ class Smrtr_DataGrid
         {
             case 'asc': $sortFunction = 'ksort'; break;
             case 'desc': $sortFunction = 'krsort'; break;
-            default: throw new Smrtr_DataGrid_Exception("\$order of 'asc' or 'desc' expected"); break;
+            default: throw new DataGridException("\$order of 'asc' or 'desc' expected"); break;
         }        
         $searchKey = $this->getKey('row', $byRowKeyOrLabel);
         $stack = array(); $keyStack = array();
@@ -2015,16 +2024,16 @@ class Smrtr_DataGrid
      * @api
      * @param callable $callback Called on each column: $callback($key, $label, $column)
      * @param boolean $returnVectorObject
-     * @return Smrtr_DataGrid new Smrtr_DataGrid with results
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::getColumn()
-     * @uses Smrtr_DataGrid::appendColumn()
+     * @return DataGrid new DataGrid with results
+     * @throws DataGridException
+     * @uses DataGrid::getColumn()
+     * @uses DataGrid::appendColumn()
      */
     public function filterColumns( $callback, $returnVectorObject=false )
     {
         if (!is_callable($callback))
-            throw new Smrtr_DataGrid_Exception("\$filter provided is not callable");
-        $Grid = new Smrtr_DataGrid;
+            throw new DataGridException("\$filter provided is not callable");
+        $Grid = new DataGrid;
         $Grid->appendKeys('row', $this->rowKeys, true);
         foreach ($this->columnKeys as $key => $label)
         {
@@ -2041,10 +2050,10 @@ class Smrtr_DataGrid
      * We merge by appending columns with null or unique labels
      * 
      * @api
-     * @param Smrtr_DataGrid $Grid Grid to merge with this
-     * @return \Smrtr_DataGrid $this
+     * @param DataGrid $Grid Grid to merge with this
+     * @return \DataGrid $this
      */
-    public function mergeColumns(Smrtr_DataGrid $Grid)
+    public function mergeColumns(DataGrid $Grid)
     {
         foreach ($Grid->getLabels('column') as $key => $label)
         {
@@ -2079,10 +2088,10 @@ class Smrtr_DataGrid
      * We remove columns with matching labels
      * 
      * @api
-     * @param Smrtr_DataGrid $Grid Grid to reference against
-     * @return \Smrtr_DataGrid $this
+     * @param DataGrid $Grid Grid to reference against
+     * @return \DataGrid $this
      */
-    public function diffColumns(Smrtr_DataGrid $Grid)
+    public function diffColumns(DataGrid $Grid)
     {
         $subtractor = 0;
         foreach ($this->getLabels('column') as $key => $label)
@@ -2098,10 +2107,10 @@ class Smrtr_DataGrid
      * We intersect by removing columns with labels unique to this grid
      * 
      * @api
-     * @param Smrtr_DataGrid $Grid Grid to reference against
-     * @return \Smrtr_DataGrid $this
+     * @param DataGrid $Grid Grid to reference against
+     * @return \DataGrid $this
      */
-    public function intersectColumns(Smrtr_DataGrid $Grid)
+    public function intersectColumns(DataGrid $Grid)
     {
         foreach ($this->getLabels('column') as $key => $label)
         {
@@ -2116,7 +2125,7 @@ class Smrtr_DataGrid
      * To overwrite this object just call like so: $grid = $grid->deleteEmptyColumns();
      * 
      * @api
-     * @return \Smrtr_DataGrid new Smrtr_DataGrid with results
+     * @return \DataGrid new DataGrid with results
      */
     public function deleteEmptyColumns()
     {
@@ -2131,17 +2140,18 @@ class Smrtr_DataGrid
     
     /*
      * ================================================================
-     * The Grid
+     * The Grid (* = API)
      * ================================================================
-     * setValue
-     * getValue
-     * loadArray
-     * getArray
-     * getAssociativeArray
-     * transpose
-     * info
-     * row
-     * column
+     * setValue*
+     * getValue*
+     * hasValue*
+     * loadArray*
+     * getArray*
+     * getAssociativeArray*
+     * transpose*
+     * info*
+     * row*
+     * column*
      * _importMatrix
      * _normalizeVector
      * _normalizePoint
@@ -2157,9 +2167,9 @@ class Smrtr_DataGrid
      * @param int|string $rowKeyOrLabel
      * @param int|string $columnKeyOrLabel
      * @param scalar|null $value
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getKey()
-     * @uses Smrtr_DataGrid::_normalizePoint() 
+     * @return \DataGrid $this
+     * @uses DataGrid::getKey()
+     * @uses DataGrid::_normalizePoint() 
      */
     public function setValue( $rowKeyOrLabel, $columnKeyOrLabel, $value )
     {
@@ -2176,7 +2186,7 @@ class Smrtr_DataGrid
      * @param int|string $rowKeyOrLabel
      * @param int|string $columnKeyOrLabel
      * @return scalar|null
-     * @uses Smrtr_DataGrid::getKey()
+     * @uses DataGrid::getKey()
      */
     public function getValue( $rowKeyOrLabel, $columnKeyOrLabel )
     {
@@ -2186,16 +2196,31 @@ class Smrtr_DataGrid
     }
     
     /**
+     * Returns true if given value exists somewhere in grid data
+     * 
+     * @param scalar|null $value
+     * @return boolean
+     */
+    public function hasValue( $value )
+    {
+        foreach ($this->data as $row)
+            foreach ($row as $val)
+                if ($val === $value)
+                    return true;
+        return false;
+    }
+    
+    /**
      * Import data from array (completely overwrites current grid data)
      * 
      * @api
      * @param array $data
      * @param boolean $associateRowLabels (optional) use array's row keys for grid's row labels
      * @param boolean $useFirstRowAsColumnLabels (optional) use array's first row as grid's column labels
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::appendKeys()
-     * @uses Smrtr_DataGrid::_importMatrix()
-     * @uses Smrtr_DataGrid::padKeys()
+     * @return \DataGrid $this
+     * @uses DataGrid::appendKeys()
+     * @uses DataGrid::_importMatrix()
+     * @uses DataGrid::padKeys()
      */
     public function loadArray( $data, $associateRowLabels=false, $useFirstRowAsColumnLabels=false )
     {
@@ -2262,8 +2287,8 @@ class Smrtr_DataGrid
      * Transposition the grid, turning rows into columns and vice-versa.
      * 
      * @api
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getColumn()
+     * @return \DataGrid $this
+     * @uses DataGrid::getColumn()
      */
     public function transpose()
     {
@@ -2301,7 +2326,7 @@ class Smrtr_DataGrid
         {
             if (array_key_exists($key, $info))
                 return $info[$key];
-            throw new Smrtr_DataGrid_Exception("Unknown key provided to info function");
+            throw new DataGridException("Unknown key provided to info function");
         }
         return $info;
     }
@@ -2311,13 +2336,13 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param int|string $rowKeyOrLabel
-     * @return \Smrtr_DataGridVector 
-     * @uses Smrtr_DataGrid::getKey()
+     * @return \DataGridVector 
+     * @uses DataGrid::getKey()
      */
     public function row( $rowKeyOrLabel )
     {
         $key = $this->getKey('row', $rowKeyOrLabel);
-        return new Smrtr_DataGridVector(
+        return new DataGridVector(
             $this->ID, $key, false
         );
     }
@@ -2327,13 +2352,13 @@ class Smrtr_DataGrid
      * 
      * @api
      * @param int|string $columnKeyOrLabel
-     * @return \Smrtr_DataGridVector 
-     * @uses Smrtr_DataGrid::getKey()
+     * @return \DataGridVector 
+     * @uses DataGrid::getKey()
      */
     public function column( $columnKeyOrLabel )
     {
         $key = $this->getKey('column', $columnKeyOrLabel);
-        return new Smrtr_DataGridVector(
+        return new DataGridVector(
             $this->ID, false, $key
         );
     }
@@ -2418,8 +2443,8 @@ class Smrtr_DataGrid
      * @param array $data [optional] 2D array of data
      * @param boolean $associateRowLabels [optional] Defaults to false
      * @param boolean $useFirstRowAsColumnLabels [optional] Defaults to false
-     * @uses Smrtr_DataGrid::appendKeys()
-     * @uses Smrtr_DataGrid::_importMatrix()
+     * @uses DataGrid::appendKeys()
+     * @uses DataGrid::_importMatrix()
      */
     public function __construct( array $data = array(), $associateRowLabels=false, $useFirstRowAsColumnLabels=false )
     {
@@ -2451,8 +2476,8 @@ class Smrtr_DataGrid
      * @param string $fileName
      * @param boolean $rowKeysAsRowKeys [optional] Defaults to false
      * @param boolean $firstRowsKeysAsColumnKeys [optional] Defaults to false
-     * @return Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::readJSON()
+     * @return DataGrid $this
+     * @uses DataGrid::readJSON()
      */
     public function loadJSON( $fileName, $rowKeysAsRowKeys=false, $firstRowsKeysAsColumnKeys=false )
     {
@@ -2467,16 +2492,16 @@ class Smrtr_DataGrid
      * @param string $JSON
      * @param boolean $rowKeysAsRowKeys [optional] Defaults to false
      * @param boolean $firstRowsKeysAsColumnKeys [optional] Defaults to false
-     * @return \Smrtr_DataGrid $this
-     * @throws Smrtr_DataGrid_Exception
-     * @uses Smrtr_DataGrid::appendKeys() 
-     * @uses Smrtr_DataGrid::_importMatrix() 
+     * @return \DataGrid $this
+     * @throws DataGridException
+     * @uses DataGrid::appendKeys() 
+     * @uses DataGrid::_importMatrix() 
      */
     public function readJSON( $JSON, $rowKeysAsRowKeys=false, $firstRowsKeysAsColumnKeys=false )
     {
         $data = (array) json_decode($JSON);
         if (!count($data))
-            throw new Smrtr_DataGrid_Exception("No data found");
+            throw new DataGridException("No data found");
         
         if ($firstRowsKeysAsColumnKeys)
         {
@@ -2503,8 +2528,8 @@ class Smrtr_DataGrid
      * @param string $fileName
      * @param boolean $keyRowsByRowKeys [optional] Defaults to false
      * @param boolean $keyFieldsByColumnKeys [optional] Defaults to false
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getAssociativeArray()
+     * @return \DataGrid $this
+     * @uses DataGrid::getAssociativeArray()
      */
     public function saveJSON( $fileName, $keyRowsByRowKeys=false, $keyFieldsByColumnKeys=false )
     {
@@ -2520,8 +2545,8 @@ class Smrtr_DataGrid
      * @param string $fileName
      * @param boolean $keyRowsByRowKeys [optional] Defaults to false
      * @param boolean $keyFieldsByColumnKeys [optional] Defaults to false
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getAssociativeArray()
+     * @return \DataGrid $this
+     * @uses DataGrid::getAssociativeArray()
      */
     public function serveJSON( $fileName, $keyRowsByRowKeys=false, $keyFieldsByColumnKeys=false )
     {
@@ -2542,8 +2567,8 @@ class Smrtr_DataGrid
      * @api
      * @param boolean $keyRowsByRowKeys [optional] Defaults to false
      * @param boolean $keyFieldsByColumnKeys [optional] Defaults to false
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::getAssociativeArray(0
+     * @return \DataGrid $this
+     * @uses DataGrid::getAssociativeArray(0
      */
     public function printJSON( $keyRowsByRowKeys=false, $keyFieldsByColumnKeys=false )
     {
@@ -2565,10 +2590,10 @@ class Smrtr_DataGrid
      * @param boolean $firstRowAsColumnKeys [optional] Defaults to false
      * @param string $delimeter [optional] Defaults to comma
      * @param string $enclosure [optional] Defaults to doublequote
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::appendKeys()
-     * @uses Smrtr_DataGrid::appendKey()
-     * @uses Smrtr_DataGrid::_importMatrix()
+     * @return \DataGrid $this
+     * @uses DataGrid::appendKeys()
+     * @uses DataGrid::appendKey()
+     * @uses DataGrid::_importMatrix()
      */
     public function loadCSV( $fileName, $firstColumnAsRowKeys=false, $firstRowAsColumnKeys=false, $delimeter=",", $enclosure='"' )
     {
@@ -2607,10 +2632,10 @@ class Smrtr_DataGrid
      * @param boolean $firstRowAsColumnKeys [optional] Defaults to false
      * @param string $delimeter [optional] Defaults to comma
      * @param string $enclosure [optional] Defaults to doublequote
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::appendKeys()
-     * @uses Smrtr_DataGrid::appendKey()
-     * @uses Smrtr_DataGrid::_importMatrix()
+     * @return \DataGrid $this
+     * @uses DataGrid::appendKeys()
+     * @uses DataGrid::appendKey()
+     * @uses DataGrid::_importMatrix()
      */
     public function readCSV( $CSV, $firstColumnAsRowKeys=false, $firstRowAsColumnKeys=false, $delimeter=",", $enclosure='"' )
     {
@@ -2650,8 +2675,8 @@ class Smrtr_DataGrid
      * @param boolean $includeColumnKeys [optional] Defaults to false
      * @param string $delimeter [optional] Defaults to delimeter
      * @param string $enclosure [optional] Defaults to doublequote
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::_prepareCSV()
+     * @return \DataGrid $this
+     * @uses DataGrid::_prepareCSV()
      */
     public function saveCSV( $fileName, $includeRowKeys=false, $includeColumnKeys=false, $delimeter=",", $enclosure='"' )
     {
@@ -2674,8 +2699,8 @@ class Smrtr_DataGrid
      * @param string $delimeter [optional] Defaults to comma
      * @param string $enclosure [optional] Defaults to doublequote
      * @param boolean $excelForceRawRender [optional] Defaults to false. Force excel to render raw contents of file (without applying any formatting).
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::_prepareCSV()
+     * @return \DataGrid $this
+     * @uses DataGrid::_prepareCSV()
      */
     public function serveCSV( $fileName, $includeRowKeys=false, $includeColumnKeys=false, $delimeter=",", $enclosure='"', $excelForceRawRender=false )
     {
@@ -2704,8 +2729,8 @@ class Smrtr_DataGrid
      * @param boolean $includeColumnKeys [optional] Defaults to false
      * @param string $delimeter [optional] Defaults to comma
      * @param string $enclosure [optional] Defaults to doublequote
-     * @return \Smrtr_DataGrid $this
-     * @uses Smrtr_DataGrid::_prepareCSV()
+     * @return \DataGrid $this
+     * @uses DataGrid::_prepareCSV()
      */
     public function printCSV( $includeRowKeys=false, $includeColumnKeys=false, $delimeter=",", $enclosure='"' )
     {
