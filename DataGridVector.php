@@ -20,8 +20,8 @@ namespace Smrtr;
  * NOTE: PHP5.5 will allow non-scalar keys, will be able to include key AND label in the foreach key.
  * 
  * @author Joe Green
- * @package SmrtrLib
- * @version 1.1
+ * @package Smrtr
+ * @version 1.3.0
  * @recommended PHP5.4
  */
 

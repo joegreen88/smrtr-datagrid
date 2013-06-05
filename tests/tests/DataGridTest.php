@@ -494,10 +494,10 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $Grid->loadCSV($this->_inputPath.'/directgov_external_search_2012-02-05.csv', true, true);
         $this->assertEquals(1, $Grid->searchRows('term="cold weather payments"')->info('rowCount'));
         $this->assertEquals(84, $Grid->searchRows('term*=job, visits>"10,000"')->info('rowCount'));     // OR
-        $this->assertEquals(9, $Grid->searchRows('term*=job + visits>"10,000"')->info('rowCount'));     // AND
+        $this->assertEquals(9, $Grid->searchRows('/0*=job + visits>"10,000"')->info('rowCount'));     // AND
         $Grid->transpose();
         $this->assertEquals(51, $Grid->searchColumns('term*=job - "visits">"10,000"')->info('columnCount'));    // NOT
-        $this->assertEquals(13, $Grid->searchColumns('("term"*=job - visits>"10,000") + (//>100 - //<400)')->info('columnCount'));
+        $this->assertEquals(13, $Grid->searchColumns('("term"*=job - /1>"10,000") + (//>100 - //<400)')->info('columnCount'));
         $Grid->rowLabels(array('"term"','visits'));
         $this->assertEquals(1, $Grid->searchColumns('//<=20 + "\"term\""^=job + visits$=559 - visits<50000')->info('columnCount'));
         $Grid->setValue('visits', 0, '"')->setValue('visits', 1, 'pipe|');
@@ -585,9 +585,23 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertTrue($row0 && $row1 && $row2 && $row3 && $row4);
     }
     
-    public function testTrimKeys()
+    public function testHasValue()
     {
-        
+//        array(1, 2, 3, 4, 5),
+//        array(5, 4, 3, 2, 1),
+//        array(4, 4, 3, 2),
+//        array(2, 1, 5, 3, 2),
+//        array(5, 1, 1)
+        $grid = new Smrtr\DataGrid($this->numberData);
+        $this->assertTrue($grid->hasValue(5));
+        $this->assertTrue($grid->hasValue(null));
+        $this->assertFalse($grid->hasValue(6));
+        $this->assertTrue($grid->rowHasValue(3, 0));
+        $this->assertFalse($grid->rowHasValue(3, 4));
+        $this->assertTrue($grid->columnHasValue(null, 4));
+        $this->assertFalse($grid->columnHasValue(1, 3));
+        try { $grid->hasValue('value', 'fooBar'); }
+        catch (Exception $e) { $this->assertInstanceOf('Smrtr\DataGridException', $e); }
     }
     
 }

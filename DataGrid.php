@@ -16,12 +16,10 @@ require_once('DataGridVector.php');
  *  - Method hasValue()
  *  - Method rowHasValue()
  *  - Method columnHasValue()
- *  - Improved loadArray() behaviour, with flags
  * 
  * @author Joe Green
- * @package SmrtrLib
+ * @package Smrtr
  * @version 1.3.0
- * @todo Pivot tables
  */
 
 class DataGrid
@@ -75,44 +73,56 @@ class DataGrid
     private static $selectorChars;
     
     /**
-     * Maximum number of selectors in any given selector string 
-     * @int
+     * On loadArray(), associate row labels by using array keys
+     * @var int
      */
-    const maxSelectors = 10;
+    const ASSOC_ROW_KEYS = 1;
     
     /**
-     * Maximum length of field string
-     * @int 
+     * On loadArray(), associate row labels by using the first column
+     * @var int
      */
-    const maxFieldLength = 50;
+    const ASSOC_ROW_FIRST = 0;
+    
+    /**
+     * On loadArray(), associate column labels by using array keys
+     * @var int
+     */
+    const ASSOC_COLUMN_KEYS = 0;
+    
+    /**
+     * On loadArray(), associate column labels by using the first row
+     * @var int
+     */
+    const ASSOC_COLUMN_FIRST = 1;
     
     /**
      * Maximum length of operator string
-     * @int 
+     * @var int 
      */
     const maxOperatorLength = 2;
     
     /**
      * Maximum length of value string 
-     * @int
+     * @var int
      */
     const maxValueLength = 1000;
     
     /**
      * Constant for left associativity of operators
-     * @int 
+     * @var int 
      */
     const leftAssociative = 0;
     
     /**
      * Constant for right associativity of operators
-     * @int 
+     * @var int 
      */
     const rightAssociative = 1;
     
     /**
      * Supported operators ["operator" => [precendence, associativity]]
-     * @array
+     * @var array
      */
     private static $setOperators = array(
         "+" => array(   10,     self::leftAssociative    ),     // intersection
@@ -532,7 +542,7 @@ class DataGrid
             {
                 if ('/' == $field) $val1 = $key;
                 elseif ('//' == $field) $val1 = $label;
-                elseif (preg_match('#/(\d+)#', $field, $matches)) $val1 = $v[$this->getKey($rowOrColumnInverse, $matches[1])];
+                elseif (preg_match('#/(\d+)#', $field, $matches)) $val1 = $v[$this->getKey($rowOrColumnInverse, (int)$matches[1])];
                 else $val1 = $v[$this->getKey($rowOrColumnInverse, $field)];
                 if ($matchingFunction($val1, $value))
                 {
@@ -1608,6 +1618,17 @@ class DataGrid
         });
     }
     
+    /**
+     * Check if a value exists in a row.
+     * @param scalar|null $value
+     * @param int|string $rowKeyOrLabel
+     * @return boolean
+     */
+    public function rowHasValue( $value, $rowKeyOrLabel )
+    {
+        return $this->hasValue($value, 'row', $rowKeyOrLabel);
+    }
+    
     
     /*
      * ================================================================
@@ -1630,6 +1651,7 @@ class DataGrid
      * mergeColumns
      * diffColumns
      * intersectColumns
+     * columnHasValue
      * ________________________________________________________________
      */
     
@@ -2138,6 +2160,17 @@ class DataGrid
         });
     }
     
+    /**
+     * Check if a value exists in a column.
+     * @param scalar|null $value
+     * @param int|string $columnKeyOrLabel
+     * @return boolean
+     */
+    public function columnHasValue( $value, $columnKeyOrLabel )
+    {
+        return $this->hasValue($value, 'column', $columnKeyOrLabel);
+    }
+    
     
     /*
      * ================================================================
@@ -2200,14 +2233,29 @@ class DataGrid
      * Returns true if given value exists somewhere in grid data
      * 
      * @param scalar|null $value
+     * @param null|string $rowOrColumn (Optional) 'row' or 'column'. Specify a row or column in which to look for the value.
+     * @param int|string $keyOrLabel (Optional) used in conjunction with $rowOrLabel to identify a row or column in which to look for the value.
      * @return boolean
      */
-    public function hasValue( $value )
+    public function hasValue( $value, $rowOrColumn=null, $keyOrLabel=null )
     {
-        foreach ($this->data as $row)
-            foreach ($row as $val)
+        if (null !== $rowOrColumn && 'row' != $rowOrColumn && 'column' != $rowOrColumn)
+            throw new DataGridException("Invalid \$rowOrColumn passed to \Smrtr\DataGrid::hasValue(). null, 'row' or 'column' expected.");
+        if (null !== $rowOrColumn)
+            $key = $this->getKey($rowOrColumn, $keyOrLabel);
+        if (null === $rowOrColumn) {
+            foreach ($this->data as $row) {
+                foreach ($row as $val) {
+                    if ($val === $value)
+                        return true;
+                }
+            }
+        }
+        else {
+            foreach ($this->{'get'.ucfirst($rowOrColumn)}($key) as $val)
                 if ($val === $value)
                     return true;
+        }
         return false;
     }
     
@@ -2223,17 +2271,31 @@ class DataGrid
      * @uses DataGrid::_importMatrix()
      * @uses DataGrid::padKeys()
      */
-    public function loadArray( $data, $associateRowLabels=false, $useFirstRowAsColumnLabels=false )
+    public function loadArray( $data, $associateRowLabels=false, $associateColumnLabels=false, $adjustForBlankCorner=false )
     {
         $this->rows = 0;
         $this->columns = 0;
         $this->rowKeys = array();
         $this->columnKeys = array();
-        if ($useFirstRowAsColumnLabels && $row = array_shift($data))
-            $this->appendKeys('column', $row);
         if (!empty($data)) {
-            if ($associateRowLabels)
+            if (self::ASSOC_COLUMN_FIRST == $associateColumnLabels) {
+                $row = array_shift($data);
+                if ($adjustForBlankCorner && self::ASSOC_ROW_FIRST === $associateRowLabels)
+                    array_shift($row);
+                $this->appendKeys('column', $row);
+            }
+            if (self::ASSOC_ROW_FIRST === $associateRowLabels) {
+                $column = array();
+                foreach ($data as $row)
+                    $column[] = array_shift($row);
+                $this->appendKeys('row', $column);
+            }
+        }        
+        if (!empty($data)) {
+            if (self::ASSOC_ROW_KEYS == $associateRowLabels)
                 $this->appendKeys('row', array_keys($data));
+            if (self::ASSOC_COLUMN_KEYS === $associateColumnLabels)
+                $this->appendKeys('column', array_keys(reset($data)));
             $this->_importMatrix($data);
         }
         $this->padKeys('row', $this->rows);
