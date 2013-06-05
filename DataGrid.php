@@ -532,6 +532,7 @@ class DataGrid
             {
                 if ('/' == $field) $val1 = $key;
                 elseif ('//' == $field) $val1 = $label;
+                elseif (preg_match('#/(\d+)#', $field, $matches)) $val1 = $v[$this->getKey($rowOrColumnInverse, $matches[1])];
                 else $val1 = $v[$this->getKey($rowOrColumnInverse, $field)];
                 if ($matchingFunction($val1, $value))
                 {
