@@ -2834,3 +2834,6 @@ class DataGrid
     }
     
 }
+// Alias for backward-compatability
+if (!class_exists('Smrtr_DataGrid', false))
+    class_alias('\Smrtr\DataGrid', 'Smrtr_DataGrid');
