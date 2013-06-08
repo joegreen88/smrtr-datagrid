@@ -14,11 +14,34 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         array('2.0', '2.1', '2.2')
     );
     
+    // ASSOC_ROW_KEYS, ASSOC_COL_FIRST
     public $labelledData = array(
                     array('col0', 'col1', 'col2'),
         'row0' =>   array('0.0', '0.1', '0.2'),
         'row1' =>   array('1.0', '1.1', '1.2'),
         'row2' =>   array('2.0', '2.1', '2.2')
+    );
+    
+    // ASSOC_ROW_FIRST, ASSOC_COL_KEYS
+    public $labelledDataInverse = array(
+        array( 'row0', 'col0'=>'0.0', 'col1'=>'0.1', 'col2'=>'0.2'),
+        array( 'row1', 'col0'=>'1.0', 'col1'=>'1.1', 'col2'=>'1.2'),
+        array( 'row2', 'col0'=>'2.0', 'col1'=>'2.1', 'col2'=>'2.2')
+    );
+    
+    // ASSOC_ROW_KEYS, ASSOC_COL_KEYS
+    public $labelledDataAssoc = array(
+        'row0' =>   array('col0'=>'0.0', 'col1'=>'0.1', 'col2'=>'0.2'),
+        'row1' =>   array('col0'=>'1.0', 'col1'=>'1.1', 'col2'=>'1.2'),
+        'row2' =>   array('col0'=>'2.0', 'col1'=>'2.1', 'col2'=>'2.2')
+    );
+    
+    // ASSOC_ROW_FIRST, ASSOC_COL_FIRST
+    public $labelledDataInline = array(
+        array(null, 'col0', 'col1', 'col2'),
+        array('row0', '0.0', '0.1', '0.2'),
+        array('row1', '1.0', '1.1', '1.2'),
+        array('row2', '2.0', '2.1', '2.2'),
     );
     
     public $partialData = array(
@@ -64,8 +87,8 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertSame($this->simpleData, $grid1->getArray(), $grid2->getArray());
         $this->assertTrue($this->isValid($grid1));
         $this->assertTrue($this->isValid($grid2));
-        // associative array
-        $grid1 = new Smrtr\DataGrid($this->labelledData, true, true);
+        // row assoc, column inline (the backwards compatible way: true, true)
+        $grid1 = new Smrtr\DataGrid($this->labelledData, \Smrtr\DataGrid::ASSOC_ROW_KEYS, \Smrtr\DataGrid::ASSOC_COLUMN_FIRST);
         $grid2 = new Smrtr\DataGrid;
         $grid2->loadArray($this->labelledData, true, true);
         $this->assertSame($this->simpleData, $grid1->getArray(), $grid2->getArray());
@@ -77,6 +100,24 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertSame($associativeData, $grid1->getAssociativeArray(), $grid2->getAssociativeArray());
         $this->assertTrue($this->isValid($grid1));
         $this->assertTrue($this->isValid($grid2));
+        // row inline, column assoc
+        $grid = new Smrtr\DataGrid;
+        $grid->loadArray($this->labelledDataInverse, Smrtr\DataGrid::ASSOC_ROW_FIRST, Smrtr\DataGrid::ASSOC_COLUMN_KEYS);
+        $this->assertSame($this->simpleData, $grid->getArray());
+        $this->assertSame($associativeData, $grid->getAssociativeArray());
+        $this->assertTrue($this->isValid($grid));
+        // row inline, column inline
+        $grid = new Smrtr\DataGrid;
+        $grid->loadArray($this->labelledDataInline, Smrtr\DataGrid::ASSOC_ROW_FIRST, Smrtr\DataGrid::ASSOC_COLUMN_FIRST);
+        $this->assertSame($this->simpleData, $grid->getArray());
+        $this->assertSame($associativeData, $grid->getAssociativeArray());
+        $this->assertTrue($this->isValid($grid));
+        // row assoc, column assoc
+        $grid = new Smrtr\DataGrid;
+        $grid->loadArray($this->labelledDataAssoc, Smrtr\DataGrid::ASSOC_ROW_KEYS, Smrtr\DataGrid::ASSOC_COLUMN_KEYS);
+        $this->assertSame($this->simpleData, $grid->getArray());
+        $this->assertSame($associativeData, $grid->getAssociativeArray());
+        $this->assertTrue($this->isValid($grid));
     }
     
     public function testGetKeysAndGetLabels()

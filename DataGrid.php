@@ -2271,7 +2271,7 @@ class DataGrid
      * @uses DataGrid::_importMatrix()
      * @uses DataGrid::padKeys()
      */
-    public function loadArray( $data, $associateRowLabels=false, $associateColumnLabels=false, $adjustForBlankCorner=false )
+    public function loadArray( $data, $associateRowLabels=false, $associateColumnLabels=false, $adjustForBlankCorner=true )
     {
         $this->rows = 0;
         $this->columns = 0;
@@ -2280,14 +2280,17 @@ class DataGrid
         if (!empty($data)) {
             if (self::ASSOC_COLUMN_FIRST == $associateColumnLabels) {
                 $row = array_shift($data);
-                if ($adjustForBlankCorner && self::ASSOC_ROW_FIRST === $associateRowLabels)
+                if ($adjustForBlankCorner && self::ASSOC_ROW_FIRST === $associateRowLabels) {
                     array_shift($row);
+                }
                 $this->appendKeys('column', $row);
             }
             if (self::ASSOC_ROW_FIRST === $associateRowLabels) {
                 $column = array();
-                foreach ($data as $row)
+                foreach ($data as $i => $row) {
                     $column[] = array_shift($row);
+                    $data[$i] = $row;
+                }
                 $this->appendKeys('row', $column);
             }
         }        
