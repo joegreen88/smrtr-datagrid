@@ -146,6 +146,13 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertSame($rowLabels, $grid->rowLabels());
         $this->assertSame($columnLabels, $grid->columnLabels());
         $this->assertTrue($this->isValid($grid));
+        $grid->updateLabel('row', 0, 'first_row');
+        $grid->updateLabel('column', 2, 'last_column');
+        $columnLabels = array('col0', 'col1', 'last_column');
+        $rowLabels = array('first_row', 'row1', 'row2');
+        $this->assertSame($rowLabels, $grid->rowLabels());
+        $this->assertSame($columnLabels, $grid->columnLabels());
+        $this->assertTrue($this->isValid($grid));
     }
 
     public function testHasKeyAndHasLabel()
@@ -237,6 +244,13 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
             $grid->getColumn('copy'), $grid->getColumn(4)
         );
         $this->assertTrue($this->isValid($grid));
+        // long column
+        $column = array('0.5', '1.5', '2.5', '3.5');
+        $grid->appendColumn($column, 'col5');
+        $this->assertEquals(4, $grid->info('rowCount'));
+        $this->assertSame(array(null, null, null, null, null, '3.5'), $grid->getRow(3));
+        $this->assertSame(array('0.0', '1.0', '2.0', null), $grid->getColumn(0));
+        $this->assertTrue($this->isValid($grid));
     }
     
     public function testAppendRows()
@@ -252,6 +266,13 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
             $grid->getRow('row3'), $grid->getRow(3),
             $grid->getRow('dupe'), $grid->getRow(4)
         );
+        $this->assertTrue($this->isValid($grid));
+        // long row
+        $row = array('5.0', '5.1', '5.2', '5.3');
+        $grid->appendRow($row, 'row5');
+        $this->assertEquals(4, $grid->info('columnCount'));
+        $this->assertSame(array(null, null, null, null, null, '5.3'), $grid->getColumn(3));
+        $this->assertSame(array('0.0', '0.1', '0.2', null), $grid->getRow(0));
         $this->assertTrue($this->isValid($grid));
     }
 
@@ -436,6 +457,18 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
             $grid2->getRow('row0') == $grid2->getRow(0)
         );
         $this->assertTrue($cond);
+        
+        $grid1 = new Smrtr\DataGrid($this->labelledData, true, true);
+        $grid1->moveRow('row2', 'row0');
+        $this->assertTrue($this->isValid($grid1));
+        $cond = (
+            $grid1->getRow(0) == $grid2->getRow(2) && 
+            $grid1->getRow(1) == $grid2->getRow(0) && 
+            $grid1->getRow(2) == $grid2->getRow(1) && 
+            $grid1->getRow('row0') == $grid2->getRow('row0') &&
+            $grid2->getRow('row0') == $grid2->getRow(0)
+        );
+        $this->assertTrue($cond);
     }
     
     public function testMoveUnstickyRow()
@@ -478,6 +511,16 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $cond = (
             $grid1->getColumn(0) == $grid2->getColumn(2) && 
             $grid1->getColumn('col0') == $grid2->getColumn('col2') &&
+            $grid2->getColumn('col2') == $grid2->getColumn(2)
+        );
+        $this->assertTrue($cond);
+        
+        $grid1 = new Smrtr\DataGrid($this->labelledData, true, true);
+        $grid1->moveColumn('col0', 'col2', false);
+        $this->assertTrue($this->isValid($grid1));
+        $cond = (
+            $grid1->getColumn(2) == $grid2->getColumn(0) && 
+            $grid1->getColumn('col2') == $grid2->getColumn('col0') &&
             $grid2->getColumn('col2') == $grid2->getColumn(2)
         );
         $this->assertTrue($cond);

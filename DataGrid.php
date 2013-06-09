@@ -673,7 +673,7 @@ class DataGrid
      */
     public function updateLabel( $rowOrColumn, $key, $label=null )
     {
-        return $this->updateKey($rowOrColumn, $key, $label=null);
+        return $this->updateKey($rowOrColumn, $key, $label);
     }
     
     /**
@@ -1155,7 +1155,6 @@ class DataGrid
         if (!is_array($row))
             throw new DataGridException("array expected");
         
-        if (!$internal) $this->appendKey('row', $label);
         $rowVector = $this->_normalizeVector($row, $this->columns);
         if (count($rowVector) > $this->columns)
         {
@@ -1163,6 +1162,7 @@ class DataGrid
             for ($i=0; $i<$lim; $i++)
                 $this->appendColumn(array(), null);
         }
+        if (!$internal) $this->appendKey('row', $label);
         array_push($this->data, $rowVector);
         $this->rows++;
         return $this;
@@ -1674,7 +1674,6 @@ class DataGrid
         if (!is_array($column))
             throw new DataGridException("array expected");
         
-        if (!$internal) $this->appendKey('column', $label);
         $colVector = $this->_normalizeVector($column, $this->rows);
         if (count($colVector) > $this->rows)
         {
@@ -1682,6 +1681,7 @@ class DataGrid
             for ($i=0; $i<$lim; $i++)
                 $this->appendRow(array(), null);
         }
+        if (!$internal) $this->appendKey('column', $label);
         foreach (array_keys($this->rowKeys) as $i)
         {
             if (!array_key_exists($i, $this->data))
