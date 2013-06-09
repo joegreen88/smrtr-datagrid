@@ -540,7 +540,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertEquals(51, $Grid->searchColumns('term*=job - "visits">"10,000"')->info('columnCount'));    // NOT
         $this->assertEquals(13, $Grid->searchColumns('("term"*=job - /1>"10,000") + (//>100 - //<400)')->info('columnCount'));
         $Grid->rowLabels(array('"term"','visits'));
-        $this->assertEquals(1, $Grid->searchColumns('//<=20 + "\"term\""^=job + visits$=559 - visits<50000')->info('columnCount'));
+        $this->assertEquals(1, $Grid->searchColumns('//<=20 + "\"term\""^=job + visits$=559 + visits>=50000')->info('columnCount'));
         $Grid->setValue('visits', 0, '"')->setValue('visits', 1, 'pipe|');
         $this->assertEquals(2, $Grid->searchColumns('visits="\""|pipe\|')->info('columnCount'));
     }
