@@ -10,19 +10,20 @@ require_once('DataGridVector.php');
  * We currently provide methods for CSV and JSON.
  * Handles custom keys (a.k.a. labels) on rows and columns.
  * 
+ * New in version 1.3.1:
+ *  - Serializable
+ *  - Added class alias (Smrtr_DataGrid) for backwards compatibility
+ * 
  * New in version 1.3.0:
  *  - Namespaced
- *  - Moved to 3 tiered versioning (1.3.0)
- *  - Method hasValue()
- *  - Method rowHasValue()
- *  - Method columnHasValue()
+ *  - Methods hasValue(), rowHasValue(), columnHasValue()
  * 
  * @author Joe Green
  * @package Smrtr
- * @version 1.3.0
+ * @version 1.3.1
  */
 
-class DataGrid
+class DataGrid implements \Serializable
 {
     
     // Factory
@@ -129,6 +130,67 @@ class DataGrid
         "-" => array(   10,     self::leftAssociative    ),     // difference
         "," => array(   0,      self::leftAssociative    )      // union
     );
+    
+    /*
+     * =============================================================
+     * Serializable Interface
+     * =============================================================
+     * serialize
+     * unserialize
+     * ________________________________________________________________
+     */
+    
+    /**
+     *@api
+     * @return string
+     */
+    public function serialize()
+    {
+        $arr = array(
+            'data' => $this->data,
+            'rowKeys' => $this->rowKeys,
+            'columnKeys' => $this->columnKeys,
+            'rows' => $this->rows,
+            'columns' => $this->columns
+        );
+        return serialize($arr);
+    }
+    
+    /**
+     * @api
+     * @param string $serialized
+     * @return \Smrtr_DataGrid
+     */
+    public function unserialize( $serialized )
+    {
+        $arr = unserialize($serialized);
+        foreach (array('data', 'rowKeys', 'columnKeys', 'rows', 'columns') as $key)
+            $this->$key = $arr[$key];
+        $this->ID = self::$IDcounter++;
+        self::$registry[$this->ID] = $this;
+    }
+    
+    /*
+     * ================================================================
+     * Search Functionality (* = API)
+     * ================================================================
+     * isSetOperator
+     * isAssociative
+     * compareSetOperatorPrecedence
+     * selectors
+     * selectorChars
+     * infixToRPN
+     * extractSearchTokens
+     * extractSearchExpression
+     * extractSearchField
+     * extractSearchOperation
+     * extractSearchValue
+     * evaluateSearchVector
+     * search*
+     * searchRows*
+     * searchColumns*
+     * ________________________________________________________________
+     */
     
     /**
      * @internal
@@ -457,8 +519,49 @@ class DataGrid
         return $value;
     }
     
+    /** 
+     * @internal
+     */
+    private function evaluateSearchVector( $v, $key, $label, $rowOrColumn, $selector )
+    {
+        if (is_bool($v)) return $v;
+        if ('row' == $rowOrColumn) $rowOrColumnInverse = 'column';
+        elseif ('column' == $rowOrColumn) $rowOrColumnInverse = 'row';
+        else throw new DataGridException("'row' or 'column' expected");
+        $selector = $this->extractSearchExpression($selector);
+        $selectorMaps = self::selectors();
+        list($fields, $operator, $values) = $selector;
+        if (empty($operator) || !array_key_exists($operator, $selectorMaps))
+            throw new DataGridException("Invalid selector provided");
+        $matchingFunction = $selectorMaps[$operator];
+        $match = false;
+        foreach ($fields as $field)
+        {
+            foreach ($values as $value)
+            {
+                if ('/' == $field) $val1 = $key;
+                elseif ('//' == $field) $val1 = $label;
+                elseif (preg_match('#/(\d+)#', $field, $matches)) $val1 = $v[$this->getKey($rowOrColumnInverse, (int)$matches[1])];
+                else $val1 = $v[$this->getKey($rowOrColumnInverse, $field)];
+                if ($matchingFunction($val1, $value))
+                {
+                    $match = true;
+                    break 2;
+                }
+            }
+        }
+        return $match;
+    }
+    
     /**
-     * NEW SEARCH METHOD
+     * Perform a search query on the grid.
+     * Returns results as a new DataGrid without modifying $this.
+     * 
+     * @link{http://datagrid.smrtr.co.uk/tutorial/searching}
+     * @param string $str Query string. 
+     * @param string $rowOrColumn 'row' or 'column'.
+     * @return \Smrtr\DataGrid
+     * @throws DataGridException 
      */
     public function search( $str, $rowOrColumn )
     {
@@ -518,40 +621,6 @@ class DataGrid
             # END LOOPING ROWS OR COLUMNS
         }
         return $Grid;
-    }
-    
-    /** 
-     * NEW EVALUATION METHOD
-     */
-    private function evaluateSearchVector( $v, $key, $label, $rowOrColumn, $selector )
-    {
-        if (is_bool($v)) return $v;
-        if ('row' == $rowOrColumn) $rowOrColumnInverse = 'column';
-        elseif ('column' == $rowOrColumn) $rowOrColumnInverse = 'row';
-        else throw new DataGridException("'row' or 'column' expected");
-        $selector = $this->extractSearchExpression($selector);
-        $selectorMaps = self::selectors();
-        list($fields, $operator, $values) = $selector;
-        if (empty($operator) || !array_key_exists($operator, $selectorMaps))
-            throw new DataGridException("Invalid selector provided");
-        $matchingFunction = $selectorMaps[$operator];
-        $match = false;
-        foreach ($fields as $field)
-        {
-            foreach ($values as $value)
-            {
-                if ('/' == $field) $val1 = $key;
-                elseif ('//' == $field) $val1 = $label;
-                elseif (preg_match('#/(\d+)#', $field, $matches)) $val1 = $v[$this->getKey($rowOrColumnInverse, (int)$matches[1])];
-                else $val1 = $v[$this->getKey($rowOrColumnInverse, $field)];
-                if ($matchingFunction($val1, $value))
-                {
-                    $match = true;
-                    break 2;
-                }
-            }
-        }
-        return $match;
     }
     
     /**

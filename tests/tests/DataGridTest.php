@@ -671,11 +671,6 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     
     public function testHasValue()
     {
-//        array(1, 2, 3, 4, 5),
-//        array(5, 4, 3, 2, 1),
-//        array(4, 4, 3, 2),
-//        array(2, 1, 5, 3, 2),
-//        array(5, 1, 1)
         $grid = new Smrtr\DataGrid($this->numberData);
         $this->assertTrue($grid->hasValue(5));
         $this->assertTrue($grid->hasValue(null));
@@ -686,6 +681,19 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $this->assertFalse($grid->columnHasValue(1, 3));
         try { $grid->hasValue('value', 'fooBar'); }
         catch (Exception $e) { $this->assertInstanceOf('Smrtr\DataGridException', $e); }
+    }
+    
+    public function testSerializable()
+    {
+        $grid1 = new Smrtr\DataGrid($this->labelledData, true, true);
+        $s1 = serialize($grid1);
+        $grid2 = unserialize($s1);
+        $this->assertTrue(
+            $grid1->info() === $grid2->info() &&
+            $grid1->getArray() === $grid2->getArray() &&
+            $grid1->getAssociativeArray() === $grid2->getAssociativeArray() &&
+            $this->isValid($grid1) && $this->isValid($grid2)
+        );
     }
     
 }
