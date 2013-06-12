@@ -85,7 +85,6 @@ class Smrtr_Test_DataGridTest_54 extends Smrtr_DataGrid_ControllerTestCase
         $grid->row(1)[1] = $val;
         $res2 = $grid->getArray()[1][1];
         $this->assertSame($res1, $res2, $res3);
-        $this->assertTrue($this->isValid($grid));
     }
     
     /**
