@@ -1,6 +1,4 @@
-[ ![Codeship Status for joegreen88/smrtr-datagrid](https://www.codeship.io/projects/fb908060-a44b-0130-ffc3-1e80e73e8cde/status?branch=master)](https://www.codeship.io/projects/3644) [![Coverage Status](https://coveralls.io/repos/joegreen88/smrtr-datagrid/badge.png?branch=master)](https://coveralls.io/r/joegreen88/smrtr-datagrid?branch=master)
-
-# Smrtr DataGrid
+# Smrtr DataGrid [![Build Status](https://travis-ci.org/joegreen88/smrtr-datagrid.png?branch=master)](https://travis-ci.org/joegreen88/smrtr-datagrid) [ ![Codeship Status for joegreen88/smrtr-datagrid](https://www.codeship.io/projects/fb908060-a44b-0130-ffc3-1e80e73e8cde/status?branch=master)](https://www.codeship.io/projects/3644) [![Coverage Status](https://coveralls.io/repos/joegreen88/smrtr-datagrid/badge.png?branch=master)](https://coveralls.io/r/joegreen88/smrtr-datagrid?branch=master)
 
 Smrtr DataGrid is a one-stop-shop for manipulating tabular data on the back-end. It's essentially a 2D-array wrapper class with methods for import/export & data manipulation. It's a general purpose tool with a fluent interface which we at smrtr use all the time.
 
