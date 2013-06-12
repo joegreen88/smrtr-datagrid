@@ -2,8 +2,7 @@
 /**
  * @author Joe Green
  * DataGridTest
- * These tests are reproducible and should go a long way to
- * inspire confidence in my DataGrid class.
+ * These tests apply to all PHP environments from 5.3 up.
  */
 require_once(TESTS_PATH.'/../DataGrid.php');
 class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
@@ -58,17 +57,6 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         array(2, 1, 5, 3, 2),
         array(5, 1, 1)
     );
-    
-    /**
-     * Return true if phpversion is at least as high as the parameter
-     * @param string|int $version
-     * @return boolean
-     */
-    protected function meetsPhpVersion( $version ) {
-        $curVersion = phpversion();
-        $bit = substr($curVersion, 0, strlen($version));
-        return ($bit > $version);
-    }
 
     /**
      * Does some sanity checks on the Smrtr\DataGrid object and returns a boolean
@@ -182,16 +170,10 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     {
         $grid = new Smrtr\DataGrid($this->simpleData);
         $val = '1.0';
-        if ($this->meetsPhpVersion('5.4')) {
-            $point1 = $grid->column(0)[1];
-            $point2 = $grid->row(1)[0];
-        }
-        else {
-            $tmp = $grid->column(0);
-            $point1 = $tmp[1];
-            $tmp = $grid->row(1);
-            $point2 = $tmp[0];
-        }
+        $tmp = $grid->column(0);
+        $point1 = $tmp[1];
+        $tmp = $grid->row(1);
+        $point2 = $tmp[0];
         $point3 = $grid->getValue(1, 0);
         $arr = $grid->getArray();
         $point4 = $arr[1][0];
@@ -203,16 +185,10 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     {
         $grid = new Smrtr\DataGrid($this->labelledData, true, true);
         $val = '1.1';
-        if ($this->meetsPhpVersion('5.4')) {
-            $point1 = $grid->column('col1')['row1'];
-            $point2 = $grid->row('row1')['col1'];
-        }
-        else {
-            $tmp = $grid->column('col1');
-            $point1 = $tmp['row1'];
-            $tmp = $grid->row('row1');
-            $point2 = $tmp['col1'];
-        }
+        $tmp = $grid->column('col1');
+        $point1 = $tmp['row1'];
+        $tmp = $grid->row('row1');
+        $point2 = $tmp['col1'];
         $point3 = $grid->getValue('row1', 'col1');
         $this->assertSame($val, $point1, $point2, $point3);
         $this->assertTrue($this->isValid($grid));
@@ -224,22 +200,14 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $val = "foobar";
         $grid->setValue(1, 1, $val);
         $res3 = $grid->getValue(1, 1);
-        if ($this->meetsPhpVersion('5.4')) {
-            $grid->column(1)[1] = $val;
-            $res1 = $grid->getArray()[1][1];
-            $grid->row(1)[1] = $val;
-            $res2 = $grid->getArray()[1][1];
-        }
-        else {
-            $col = $grid->column(1);
-            $col[1] = $val;
-            $arr = $grid->getArray();
-            $res1 = $arr[1][1];
-            $row = $grid->row(1);
-            $row[1] = $val;
-            $arr = $grid->getArray();
-            $res2 = $arr[1][1];
-        }
+        $col = $grid->column(1);
+        $col[1] = $val;
+        $arr = $grid->getArray();
+        $res1 = $arr[1][1];
+        $row = $grid->row(1);
+        $row[1] = $val;
+        $arr = $grid->getArray();
+        $res2 = $arr[1][1];
         $this->assertSame($res1, $res2, $res3);
         $this->assertTrue($this->isValid($grid));
     }
@@ -256,21 +224,12 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $res3 = $grid->getValue('row2', 'col2');
         $grid->setValue('row2', 'col2', $val);
         $res4 = $grid->getValue('row2', 'col2');
-        
-        if ($this->meetsPhpVersion('5.4')) {
-            $grid->column('col2')['row2'] = $val;
-            $res1 = $grid->getValue('row2', 'col2');
-            $grid->row('row2')['col2'] = $val;
-            $res2 = $grid->getValue('row2', 'col2');
-        }
-        else {
-            $col = $grid->column('col2');
-            $col['row2'] = $val;
-            $res1 = $grid->getValue('row2', 'col2');
-            $row = $grid->row('row2');
-            $row['col2'] = $val;
-            $res2 = $grid->getValue('row2', 'col2');
-        }
+        $col = $grid->column('col2');
+        $col['row2'] = $val;
+        $res1 = $grid->getValue('row2', 'col2');
+        $row = $grid->row('row2');
+        $row['col2'] = $val;
+        $res2 = $grid->getValue('row2', 'col2');
         
         $this->assertSame($val, $res1, $res2, $res3, $res4);
         $this->assertTrue($this->isValid($grid));

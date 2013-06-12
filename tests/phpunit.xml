@@ -1,8 +1,13 @@
 <phpunit bootstrap="./bootstrap.php" colors="true">
     
-    <testsuite name="smrtr-datagrid">
-        <directory>./</directory>
-    </testsuite>
+    <testsuites>
+	<testsuite name="smrtr-datagrid">
+	    <directory suffix="Test.php" phpVersion="5.3" phpVersionOperator=">=">./5.3</directory>
+	</testsuite>
+	<testsuite name="smrtr-datagrid-5.4">
+	    <directory suffix="Test_54.php" phpVersion="5.4" phpVersionOperator=">=">./5.4</directory>
+	</testsuite>
+    </testsuites>
     
     <filter>
         <whitelist>
