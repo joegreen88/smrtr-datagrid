@@ -50,13 +50,26 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         array()
     );
     
-    public $numberData =array(
+    public $numberData = array(
         array(1, 2, 3, 4, 5),
         array(5, 4, 3, 2, 1),
         array(4, 4, 3, 2),
         array(2, 1, 5, 3, 2),
         array(5, 1, 1)
     );
+    
+    public $csvData = array(
+        array('A1', 'B1', 'C1', 'D1'),
+        array('A2', 'B2', 'C2', 'D2'),
+        array('A3', 'B3', 'C3', 'D3'),
+        array('A4', 'B4', 'C4', 'D4'),
+    );
+    
+    public $csvRowKeys = array('_1', '_2', '_3', '_4');
+    
+    public $csvColumnKeys = array('A', 'B', 'C', 'D');
+    
+    public $csvEmptyKeys = array(null, null, null, null);
 
     /**
      * Does some sanity checks on the Smrtr\DataGrid object and returns a boolean
@@ -699,6 +712,61 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
             $grid1->getAssociativeArray() === $grid2->getAssociativeArray() &&
             $this->isValid($grid1) && $this->isValid($grid2)
         );
+    }
+    
+    public function testLoadCSV()
+    {
+        // Labelled Grid
+        $grid = new Smrtr\DataGrid;
+        $grid->loadCSV($this->_inputPath.'/labelled.csv', true, true);
+        $this->assertSame($grid->getArray(), $this->csvData);
+        $this->assertSame($grid->getRowLabels(), $this->csvRowKeys);
+        $this->assertSame($grid->getColumnLabels(), $this->csvColumnKeys);
+        $this->assertTrue($this->isValid($grid));
+        
+        // Row-Labelled Grid
+        $grid = new Smrtr\DataGrid;
+        $grid->loadCSV($this->_inputPath.'/labelled_rows.csv', true, false);
+        $this->assertSame($grid->getArray(), $this->csvData);
+        $this->assertSame($grid->getRowLabels(), $this->csvRowKeys);
+        $this->assertSame($grid->getColumnLabels(), $this->csvEmptyKeys);
+        $this->assertTrue($this->isValid($grid));
+        
+        // Column-Labelled Grid
+        $grid = new Smrtr\DataGrid;
+        $grid->loadCSV($this->_inputPath.'/labelled_columns.csv', false, true);
+        $this->assertSame($grid->getArray(), $this->csvData);
+        $this->assertSame($grid->getRowLabels(), $this->csvEmptyKeys);
+        $this->assertSame($grid->getColumnLabels(), $this->csvColumnKeys);
+        $this->assertTrue($this->isValid($grid));
+        
+        // Unlabelled Grid
+        $grid = new Smrtr\DataGrid;
+        $grid->loadCSV($this->_inputPath.'/unlabelled.csv', false, false);
+        $this->assertSame($grid->getArray(), $this->csvData);
+        $this->assertSame($grid->getRowLabels(), $this->csvEmptyKeys);
+        $this->assertSame($grid->getColumnLabels(), $this->csvEmptyKeys);
+        $this->assertTrue($this->isValid($grid));
+    }
+    
+    public function testReadCSV()
+    {
+        
+    }
+    
+    public function testSaveCSV()
+    {
+        
+    }
+    
+    public function testPrintCSV()
+    {
+        
+    }
+    
+    public function testServeCSV()
+    {
+        
     }
     
 }
