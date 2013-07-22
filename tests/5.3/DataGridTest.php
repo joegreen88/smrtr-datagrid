@@ -790,7 +790,26 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     
     public function testSaveCSV()
     {
+        $grid = new Smrtr\DataGrid;
+        $grid->loadArray($this->csvData);
+        $grid->rowLabels($this->csvRowKeys);
+        $grid->columnLabels($this->csvColumnKeys);
         
+        // Labelled Grid
+        $grid->saveCSV($this->_outputPath.'/labelled.csv', true, true);
+        $this->assertFileEquals($this->_inputPath.'/labelled.csv', $this->_outputPath.'/labelled.csv');
+        
+        // Row-Labelled Grid
+        $grid->saveCSV($this->_outputPath.'/labelled_rows.csv', true, false);
+        $this->assertFileEquals($this->_inputPath.'/labelled_rows.csv', $this->_outputPath.'/labelled_rows.csv');
+        
+        // Column-Labelled Grid
+        $grid->saveCSV($this->_outputPath.'/labelled_columns.csv', false, true);
+        $this->assertFileEquals($this->_inputPath.'/labelled_columns.csv', $this->_outputPath.'/labelled_columns.csv');
+        
+        // Unlabelled Grid
+        $grid->saveCSV($this->_outputPath.'/unlabelled.csv', false, false);
+        $this->assertFileEquals($this->_inputPath.'/unlabelled.csv', $this->_outputPath.'/unlabelled.csv');
     }
     
     public function testPrintCSV()
