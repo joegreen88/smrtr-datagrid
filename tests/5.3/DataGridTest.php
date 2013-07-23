@@ -793,7 +793,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $grid = new Smrtr\DataGrid;
         $grid->loadArray($this->csvData);
         $grid->rowLabels($this->csvRowKeys);
-        $grid->columnLabels($this->csvColumnKeys);        
+        $grid->columnLabels($this->csvColumnKeys);
         
         // Labelled Grid
         $grid->saveCSV($this->_outputPath.'/labelled.csv', true, true);
@@ -814,7 +814,30 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
     
     public function testPrintCSV()
     {
+        $grid = new Smrtr\DataGrid;
+        $grid->loadArray($this->csvData);
+        $grid->rowLabels($this->csvRowKeys);
+        $grid->columnLabels($this->csvColumnKeys);
         
+        // Labelled Grid
+        ob_start();
+        $grid->printCSV(true, true);
+        $this->assertSame(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled.csv'));
+        
+        // Row-Labelled Grid
+        ob_start();
+        $grid->printCSV(true, false);
+        $this->assertSame(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled_rows.csv'));
+        
+        // Column-Labelled Grid
+        ob_start();
+        $grid->printCSV(false, true);
+        $this->assertSame(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled_columns.csv'));
+        
+        // Unlabelled Grid
+        ob_start();
+        $grid->printCSV(false, false);
+        $this->assertSame(ob_get_clean(), file_get_contents($this->_inputPath.'/unlabelled.csv'));
     }
     
     public function testServeCSV()
