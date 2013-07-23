@@ -22,6 +22,7 @@
     },
     "require-dev": {
         "satooshi/php-coveralls": "dev-master",
-        "phpunit/phpunit": "3.7.20"
+        "phpunit/phpunit": "3.7.20",
+        "mikey179/vfsStream": "v1.2.0"
     }
 }

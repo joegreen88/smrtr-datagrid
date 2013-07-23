@@ -1,3 +1,4 @@
+composer.lock
 tags
 /docs
 /docs/*
@@ -5,3 +6,6 @@ tags
 /tests/output
 /tests/output/*
 /tests/output/**
+/vendor
+/vendor/*
+/vendor/**

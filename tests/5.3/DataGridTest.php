@@ -793,7 +793,7 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $grid = new Smrtr\DataGrid;
         $grid->loadArray($this->csvData);
         $grid->rowLabels($this->csvRowKeys);
-        $grid->columnLabels($this->csvColumnKeys);
+        $grid->columnLabels($this->csvColumnKeys);        
         
         // Labelled Grid
         $grid->saveCSV($this->_outputPath.'/labelled.csv', true, true);
