@@ -9,6 +9,9 @@ require_once('DataGridVector.php');
  * This class is a one-stop-shop for transporting tabular data between formats.
  * We currently provide methods for CSV and JSON.
  * Handles custom keys (a.k.a. labels) on rows and columns.
+ *
+ * New in version 1.3.2:
+ *  - Updated versioning in composer.json for submission to packagist
  * 
  * New in version 1.3.1:
  *  - Serializable
@@ -20,7 +23,7 @@ require_once('DataGridVector.php');
  * 
  * @author Joe Green
  * @package Smrtr
- * @version 1.3.1
+ * @version 1.3.2
  */
 
 class DataGrid implements \Serializable
