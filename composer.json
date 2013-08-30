@@ -9,7 +9,6 @@
     ],
     "homepage": "http://datagrid.smrtr.co.uk/",
     "license": "MIT",
-    "version": "1.3.0",
     "autoload":{
 	"classmap": ["DataGrid.php", "DataGridVector.php"]
     },
