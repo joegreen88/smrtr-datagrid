@@ -1,7 +1,7 @@
 <?php
 define('TESTS_PATH', realpath(dirname(__FILE__)));
 define('ROOT_PATH', realpath(dirname(TESTS_PATH)));
-require_once ('PHPUnit/Autoload.php');
+//require_once ('PHPUnit/Autoload.php');
 require_once(ROOT_PATH.'/vendor/autoload.php');
 
 class Smrtr_DataGrid_ControllerTestCase extends PHPUnit_Framework_TestCase
