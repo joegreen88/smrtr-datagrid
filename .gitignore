@@ -9,3 +9,6 @@ tags
 /vendor
 /vendor/*
 /vendor/**
+/.idea
+/.idea/*
+/.idea/**

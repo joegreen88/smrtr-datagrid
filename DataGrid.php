@@ -1307,7 +1307,14 @@ class DataGrid implements \Serializable
      */
     public function getRowDistinct( $keyOrLabel )
     {
-        return array_keys( @ array_flip( $this->getRow($keyOrLabel) ) );
+        $row = $this->getRow($keyOrLabel);
+        $out = array();
+        foreach ($row as $val) {
+            if (!in_array($val, $out) && null !== $val) {
+                $out[] = $val;
+            }
+        }
+        return $out;
     }
     
     /**
@@ -1837,11 +1844,18 @@ class DataGrid implements \Serializable
      */
     public function getColumnDistinct( $keyOrLabel )
     {
-        return array_keys( @ array_flip( $this->getColumn($keyOrLabel) ) );
+        $col = $this->getColumn($keyOrLabel);
+        $out = array();
+        foreach ($col as $val) {
+            if (!in_array($val, $out) && null !== $val) {
+                $out[] = $val;
+            }
+        }
+        return $out;
     }
     
     /**
-     * Get an array with counts of occurences of each value in a column
+     * Get an array with counts of occurrences of each value in a column
      * 
      * @param int|string $keyOrLabel
      * @param boolean $verbose (optional) return array with reoccurring values appearing multiple times
@@ -2723,30 +2737,18 @@ class DataGrid implements \Serializable
      * @param string $fileName
      * @param boolean $firstColumnAsRowKeys [optional] Defaults to false
      * @param boolean $firstRowAsColumnKeys [optional] Defaults to false
-     * @param string $delimeter [optional] Defaults to comma
+     * @param string $delimiter [optional] Defaults to comma
      * @param string $enclosure [optional] Defaults to doublequote
+     * @param string $escape    [optional] Defaults to backslash
      * @return \DataGrid $this
      * @uses DataGrid::appendKeys()
      * @uses DataGrid::appendKey()
      * @uses DataGrid::_importMatrix()
      */
-    public function loadCSV( $fileName, $firstColumnAsRowKeys=false, $firstRowAsColumnKeys=false, $delimeter=",", $enclosure='"' )
+    public function loadCSV( $fileName, $firstColumnAsRowKeys=false, $firstRowAsColumnKeys=false, $delimiter=",", $enclosure='"', $escape='\\' )
     {
-        $fileStream = fopen( $fileName, 'r '); 
-        $go = true;
-        $data = array();
-        while ($row = fgetCSV( $fileStream, 0, $delimeter, $enclosure ))
-        {
-            if ($firstRowAsColumnKeys && $go) {
-                if ($firstColumnAsRowKeys)
-                    $this->appendKeys('column', array_slice((array) $row, 1));
-                else
-                    $this->appendKeys('column', (array) $row);
-                $go = false; continue;
-            }
-            if ($firstColumnAsRowKeys) $this->appendKey('row', (string) array_shift($row));
-            $data[] = $row;
-        }
+        $fileStream = fopen( $fileName, 'r ');
+        $data = $this->csvFileToArray($fileStream, $firstColumnAsRowKeys, $firstRowAsColumnKeys, $delimiter, $enclosure, $escape);
         fclose($fileStream);
         
         $this->_importMatrix($data);
@@ -2755,7 +2757,42 @@ class DataGrid implements \Serializable
             $this->appendKeys('row', array_fill(0, $this->rows, null));
         if (!$firstRowAsColumnKeys)
             $this->appendKeys('column', array_fill(0, $this->columns, null));
+
         return $this;
+    }
+
+    /**
+     * @param resource $fileStream
+     * @param boolean  $firstColumnAsRowKeys [optional] Defaults to false
+     * @param boolean  $firstRowAsColumnKeys [optional] Defaults to false
+     * @param string   $delimiter            [optional] Defaults to comma
+     * @param string   $enclosure            [optional] Defaults to doublequote
+     * @param string   $escape               [optional] Defaults to backslash
+     *
+     * @return array
+     */
+    protected function csvFileToArray($fileStream, $firstColumnAsRowKeys=false, $firstRowAsColumnKeys=false, $delimiter=",", $enclosure='"', $escape='\\')
+    {
+        $go = true;
+        $data = array();
+        while ($row = fgetCSV( $fileStream, 0, $delimiter, $enclosure, $escape ))
+        {
+            if ($go && $firstRowAsColumnKeys) {
+                if ($firstColumnAsRowKeys) {
+                    $this->appendKeys('column', array_slice((array) $row, 1));
+                }
+                else {
+                    $this->appendKeys('column', (array) $row);
+                }
+                $go = false;
+                continue;
+            }
+            if ($firstColumnAsRowKeys) {
+                $this->appendKey('row', (string) array_shift($row));
+            }
+            $data[] = $row;
+        }
+        return $data;
     }
     
     /**
@@ -2765,32 +2802,21 @@ class DataGrid implements \Serializable
      * @param string $CSV
      * @param boolean $firstColumnAsRowKeys [optional] Defaults to false
      * @param boolean $firstRowAsColumnKeys [optional] Defaults to false
-     * @param string $delimeter [optional] Defaults to comma
+     * @param string $delimiter [optional] Defaults to comma
      * @param string $enclosure [optional] Defaults to doublequote
-     * @return \DataGrid $this
+     * @param string $escape    [optional] Defaults to backslash
+     * @return $this
      * @uses DataGrid::appendKeys()
      * @uses DataGrid::appendKey()
      * @uses DataGrid::_importMatrix()
      */
-    public function readCSV( $CSV, $firstColumnAsRowKeys=false, $firstRowAsColumnKeys=false, $delimeter=",", $enclosure='"' )
+    public function readCSV( $CSV, $firstColumnAsRowKeys=false, $firstRowAsColumnKeys=false, $delimiter=",", $enclosure='"', $escape='\\' )
     {
-        $go = true;
-        $data = array();
-        $rows = str_getcsv($CSV, PHP_EOL, $enclosure);
-        foreach ($rows as $line)
-        {
-            $row = str_getcsv( $line, $delimeter, $enclosure );
-            if ($firstRowAsColumnKeys && $go) {
-                if ($firstColumnAsRowKeys)
-                    $this->appendKeys('column', array_slice($row, 1));
-                else
-                    $this->appendKeys('column', $row);
-                $go = false; continue;
-            }
-            if ($firstColumnAsRowKeys)
-                $this->appendKey('row', (string) array_shift($row));
-            $data[] = $row;
-        }
+        $stream = fopen('php://memory','r+');
+        fwrite($stream, $CSV);
+        rewind($stream);
+        $data = $this->csvFileToArray($stream, $firstColumnAsRowKeys, $firstRowAsColumnKeys, $delimiter, $enclosure, $escape);
+        fclose($stream);
         
         $this->_importMatrix($data);
         
@@ -2798,7 +2824,13 @@ class DataGrid implements \Serializable
             $this->appendKeys('row', array_fill(0, $this->rows, null));
         if (!$firstRowAsColumnKeys)
             $this->appendKeys('column', array_fill(0, $this->columns, null));
+
         return $this;
+    }
+
+    protected function parseCSV()
+    {
+
     }
     
     /**
