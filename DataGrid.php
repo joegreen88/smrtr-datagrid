@@ -2827,11 +2827,6 @@ class DataGrid implements \Serializable
 
         return $this;
     }
-
-    protected function parseCSV()
-    {
-
-    }
     
     /**
      * Save data to a CSV file
@@ -2842,15 +2837,19 @@ class DataGrid implements \Serializable
      * @param boolean $includeColumnKeys [optional] Defaults to false
      * @param string $delimeter [optional] Defaults to delimeter
      * @param string $enclosure [optional] Defaults to doublequote
+     * @param string $newline   [optional] Defaults to "\n"
      * @return \DataGrid $this
      * @uses DataGrid::_prepareCSV()
      */
-    public function saveCSV( $fileName, $includeRowKeys=false, $includeColumnKeys=false, $delimeter=",", $enclosure='"' )
+    public function saveCSV( $fileName, $includeRowKeys=false, $includeColumnKeys=false, $delimeter=",", $enclosure='"', $newline="\n" )
     {
         $fileStream = fopen($fileName, 'w');
         $data = $this->_prepareCSV($includeRowKeys, $includeColumnKeys);
-        array_walk( $data, function(&$vals, $keys, $vars) {
-            fputCSV( $vars['outstream'], $vals, $vars['delimeter'], $vars['enclosure'] );
+        array_walk( $data, function(&$vals, $keys, $vars) use($newline) {
+            $return = fputCSV( $vars['outstream'], $vals, $vars['delimeter'], $vars['enclosure'] );
+            if ($return !== false && "\n" != $newline && 0 === fseek($vars['outstream'], -1, SEEK_CUR)) {
+                fwrite($vars['outstream'], $newline);
+            }
         }, array('outstream'=>$fileStream, 'delimeter'=>$delimeter, 'enclosure'=>$enclosure) );
         fclose($fileStream);
         return $this;
@@ -2865,11 +2864,12 @@ class DataGrid implements \Serializable
      * @param boolean $includeColumnKeys [optional] Defaults to false
      * @param string $delimeter [optional] Defaults to comma
      * @param string $enclosure [optional] Defaults to doublequote
+     * @param string $newline   [optional] Defaults to "\n"
      * @param boolean $excelForceRawRender [optional] Defaults to false. Force excel to render raw contents of file (without applying any formatting).
      * @return \DataGrid $this
      * @uses DataGrid::_prepareCSV()
      */
-    public function serveCSV( $fileName, $includeRowKeys=false, $includeColumnKeys=false, $delimeter=",", $enclosure='"', $excelForceRawRender=false )
+    public function serveCSV( $fileName, $includeRowKeys=false, $includeColumnKeys=false, $delimeter=",", $enclosure='"', $newline="\n", $excelForceRawRender=false )
     {
         header("Pragma: public");
         header("Expires: 0");
@@ -2881,8 +2881,11 @@ class DataGrid implements \Serializable
         if($excelForceRawRender) echo "\xef\xbb\xbf";
         $outStream = fopen("php://output", "r+");
         $data = $this->_prepareCSV($includeRowKeys, $includeColumnKeys);
-        array_walk( $data, function(&$vals, $keys, $vars) {
-            fputCSV( $vars['outstream'], $vals, $vars['delimeter'], $vars['enclosure'] );
+        array_walk( $data, function(&$vals, $keys, $vars) use($newline) {
+            $return = fputCSV( $vars['outstream'], $vals, $vars['delimeter'], $vars['enclosure'] );
+            if ($return !== false && "\n" != $newline && 0 === fseek($vars['outstream'], -1, SEEK_CUR)) {
+                fwrite($vars['outstream'], $newline);
+            }
         }, array('outstream'=>$outStream, 'delimeter'=>$delimeter, 'enclosure'=>$enclosure) );
         fclose($outStream);
         return $this;

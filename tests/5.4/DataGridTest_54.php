@@ -5,6 +5,7 @@
  * Additional tests to run in php environments from 5.4 up.
  */
 require_once(TESTS_PATH.'/../DataGrid.php');
+
 class Smrtr_Test_DataGridTest_54 extends Smrtr_DataGrid_ControllerTestCase
 {
     public $simpleData = array(

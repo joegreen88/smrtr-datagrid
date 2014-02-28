@@ -5,6 +5,7 @@
  * These tests apply to all PHP environments from 5.3 up.
  */
 require_once(TESTS_PATH.'/../DataGrid.php');
+
 class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
 {
     public $simpleData = array(
@@ -796,19 +797,19 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         $grid->columnLabels($this->csvColumnKeys);
         
         // Labelled Grid
-        $grid->saveCSV($this->_outputPath.'/labelled.csv', true, true);
+        $grid->saveCSV($this->_outputPath.'/labelled.csv', true, true, ',', '"', PHP_EOL);
         $this->assertFileEquals($this->_inputPath.'/labelled.csv', $this->_outputPath.'/labelled.csv');
         
         // Row-Labelled Grid
-        $grid->saveCSV($this->_outputPath.'/labelled_rows.csv', true, false);
+        $grid->saveCSV($this->_outputPath.'/labelled_rows.csv', true, false, ',', '"', PHP_EOL);
         $this->assertFileEquals($this->_inputPath.'/labelled_rows.csv', $this->_outputPath.'/labelled_rows.csv');
         
         // Column-Labelled Grid
-        $grid->saveCSV($this->_outputPath.'/labelled_columns.csv', false, true);
+        $grid->saveCSV($this->_outputPath.'/labelled_columns.csv', false, true, ',', '"', PHP_EOL);
         $this->assertFileEquals($this->_inputPath.'/labelled_columns.csv', $this->_outputPath.'/labelled_columns.csv');
         
         // Unlabelled Grid
-        $grid->saveCSV($this->_outputPath.'/unlabelled.csv', false, false);
+        $grid->saveCSV($this->_outputPath.'/unlabelled.csv', false, false, ',', '"', PHP_EOL);
         $this->assertFileEquals($this->_inputPath.'/unlabelled.csv', $this->_outputPath.'/unlabelled.csv');
     }
     
@@ -822,22 +823,31 @@ class Smrtr_Test_DataGridTest extends Smrtr_DataGrid_ControllerTestCase
         // Labelled Grid
         ob_start();
         $grid->printCSV(true, true);
-        $this->assertSame(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled.csv'));
+        $this->assertSameLines(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled.csv'));
         
         // Row-Labelled Grid
         ob_start();
         $grid->printCSV(true, false);
-        $this->assertSame(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled_rows.csv'));
+        $this->assertSameLines(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled_rows.csv'));
         
         // Column-Labelled Grid
         ob_start();
         $grid->printCSV(false, true);
-        $this->assertSame(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled_columns.csv'));
+        $this->assertSameLines(ob_get_clean(), file_get_contents($this->_inputPath.'/labelled_columns.csv'));
         
         // Unlabelled Grid
         ob_start();
         $grid->printCSV(false, false);
-        $this->assertSame(ob_get_clean(), file_get_contents($this->_inputPath.'/unlabelled.csv'));
+        $this->assertSameLines(ob_get_clean(), file_get_contents($this->_inputPath.'/unlabelled.csv'));
+    }
+
+    protected function assertSameLines($str1, $str2)
+    {
+        $lines1 = preg_split("/\r\n|\n|\r/", $str1);
+        $lines2 = preg_split("/\r\n|\n|\r/", $str2);
+        for ($i=0; $i<max(count($lines1), count($lines2)); $i++) {
+            $this->assertSame($lines1[$i], $lines2[$i]);
+        }
     }
     
     public function testServeCSV()
