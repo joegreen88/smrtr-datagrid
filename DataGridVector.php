@@ -1,15 +1,17 @@
 <?php
 
+namespace Smrtr;
+
 /**
- * Used by \Smrtr_DataGrid
+ * Used by \Smrtr\DataGrid
  * 
  * This class is a proxy to getters/setters on the grid for specific row or column.
  * This class implements Countable.
  * This class implements ArrayAccess.
  * This class implements Iterator.
- * Upon construction this is linked to a Smrtr_DataGrid and given a type (row, column) and a key (offset).
+ * Upon construction this is linked to a DataGrid and given a type (row, column) and a key (offset).
  * 
- * The ArrayAccess methods are overloading set/get on the linked Smrtr_DataGrid.
+ * The ArrayAccess methods are overloading set/get on the linked DataGrid.
  * Examples: $grid->row(5)[7] = "foo"; $var = $grid->column(0)[2]; 
  * Unset simply sets a null value, example: unset($grid->row(1)[4]);
  * 
@@ -18,12 +20,12 @@
  * NOTE: PHP5.5 will allow non-scalar keys, will be able to include key AND label in the foreach key.
  * 
  * @author Joe Green
- * @package SmrtrLib
- * @version 1.1
+ * @package Smrtr
+ * @version 1.3.0
  * @recommended PHP5.4
  */
 
-class Smrtr_DataGridVector implements Countable, ArrayAccess, Iterator
+class DataGridVector implements \Countable, \ArrayAccess, \Iterator
 {
     protected $DataGridID = null;
     protected $type = null;
@@ -32,7 +34,7 @@ class Smrtr_DataGridVector implements Countable, ArrayAccess, Iterator
     /** 
      * Exactly one key must be provided. Rowkey takes precedence if you try to provide two keys.
      * 
-     * @param int $DataGridID Link this object to a Smrtr_DataGrid with $DataGridID
+     * @param int $DataGridID Link this object to a DataGrid with $DataGridID
      * @param int|false [optional] Save the position of this vector with a rowKey
      * @param int|false [optional] Save the position of this vector with a columnKey
      */
@@ -54,17 +56,17 @@ class Smrtr_DataGridVector implements Countable, ArrayAccess, Iterator
     }
     
     /**
-     * Get the linked Smrtr_DataGrid instance
+     * Get the linked DataGrid instance
      * 
-     * @return Smrtr_DataGrid 
+     * @return DataGrid 
      */
     public function grid()
     {
-        return Smrtr_DataGrid::getByID($this->DataGridID);
+        return DataGrid::getByID($this->DataGridID);
     }
     
     /**
-     * Get the data values corresponding to this vector out of linked Smrtr_DataGrid
+     * Get the data values corresponding to this vector out of linked DataGrid
      * 
      * @param boolean $labelled [optional] if $labelled then returned array indexed by labels, if they are found
      * @return array
@@ -94,8 +96,8 @@ class Smrtr_DataGridVector implements Countable, ArrayAccess, Iterator
      * Get/Set label for this row/column
      * 
      * @param false|string|null $label [optional] string|null to set label, false [default] to get label
-     * @return \Smrtr_DataGridVector|string|null $this or label
-     * @throws Smrtr_DataGrid_Exception 
+     * @return \DataGridVector|string|null $this or label
+     * @throws DataGrid_Exception 
      */
     public function label($label=false)
     {
@@ -107,7 +109,7 @@ class Smrtr_DataGridVector implements Countable, ArrayAccess, Iterator
         }
         elseif (!$label)
             return $this->grid()->{'get'.ucfirst($type)}($this->key, $labelled);
-        throw new Smrtr_DataGrid_Exception("");
+        throw new DataGrid_Exception("");
     }
     
     /**
@@ -118,12 +120,12 @@ class Smrtr_DataGridVector implements Countable, ArrayAccess, Iterator
     {
         if ('row' == $this->type) return 'row';
         if ('column' == $this->type) return 'column';
-        throw new Exception("Type of Smrtr_DataGridVector is unknown");
+        throw new Exception("Type of DataGridVector is unknown");
     }
     
     /**
      * Return vector's offset in the grid, or set offset and return this
-     * @return int|Smrtr_DataGridVector
+     * @return int|DataGridVector
      */
     public function position($offset=false)
     {
@@ -162,7 +164,7 @@ class Smrtr_DataGridVector implements Countable, ArrayAccess, Iterator
             return $this->grid()->hasKey($type, $offset);
         elseif (is_string($offset))
             return $this->grid()->hasLabel($type, $offset);
-        throw new Smrtr_DataGrid_Exception("\vector offset expected string or int");
+        throw new DataGrid_Exception("\vector offset expected string or int");
     }
     
     /**
@@ -175,7 +177,7 @@ class Smrtr_DataGridVector implements Countable, ArrayAccess, Iterator
             return $this->grid()->getValue($this->key, $offset);
         if ('column' == $type)
             return $this->grid()->getValue($offset, $this->key);
-        throw new Smrtr_DataGrid_Exception("vector offset $offset not found");
+        throw new DataGrid_Exception("vector offset $offset not found");
     }
     
     /**
