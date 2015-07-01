@@ -1288,12 +1288,16 @@ class DataGrid implements \Serializable
      * 
      * @api
      * @param int|string $keyOrLabel
+     * @param boolean $associative Optional
      * @return array
      * @uses DataGrid::getKey()
      */
-    public function getRow( $keyOrLabel )
+    public function getRow( $keyOrLabel, $associative=false )
     {
         $key = $this->getKey('row', $keyOrLabel);
+        if ($associative) {
+            return array_combine($this->getColumnLabels(), $this->data[$key]);
+        }
         return $this->data[$key];
     }
     
@@ -1822,15 +1826,19 @@ class DataGrid implements \Serializable
      * 
      * @api
      * @param int|string $keyOrLabel
+     * @param boolean $associative Optional
      * @return array
      * @uses DataGrid::getKey()
      */
-    public function getColumn( $keyOrLabel )
+    public function getColumn( $keyOrLabel, $associative=false )
     {
         $key = $this->getKey('column', $keyOrLabel);
         $column = array();
         foreach ($this->data as $i => $row)
             $column[$i] = $row[$key];
+        if ($associative) {
+            return array_combine($this->getRowLabels(), $column);
+        }
         return $column;
     }
     
